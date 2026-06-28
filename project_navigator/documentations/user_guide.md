@@ -41,7 +41,8 @@ sign in again.
 
 - **Add** a stage with `+ Add stage`; type the name, press Enter or click Add.
 - **Rename** / delete by expanding the stage and using the footer buttons.
-- **Set status** (`To do`, `Active`, `Blocked`, `Done`) using the footer pills.
+- **Set status** via the footer pill (click it to open a dropdown, pick one
+  of `To Do`, `Active`, `Blocked`, `Done`). Same dropdown UX as blockers.
 - **Expand / collapse** a stage by clicking its header (the `▾` rotates).
 - **Reorder**: not yet supported via drag; editing is by delete + re-create.
 
@@ -50,13 +51,15 @@ sign in again.
 Each stage has a *Blockers & questions* subsection. Click `+` on a blocker to
 expand it (sub-items + add input).
 
-- **Set status** via the colored pill (`To do` / `Active` / `Blocked` / `Done`).
+- **Set status** via the colored pill (click to open the dropdown).
+  - Non-deep blockers show: `To Do`, `Active`, `Blocked`, `Done` + a
+    separator + `⚑ Going too deep?`.
 - **"Too deep" mode**: click the pill and choose `⚑ Going too deep?` to switch
-  to a deep status palette (`Park` / `Review` / `Nice to have` / `To Solve`).
+  to a deep status palette (`Park`, `Review`, `Nice to have`, `To Solve →normal`).
   The row gets an amber border + background.
-- **Back to normal**: from the deep pill, choose `↩ Back to normal`.
-- **Solve**: from the deep pill, choose `To Solve →normal` — this both marks
-  the blocker as solved and removes the deep flag.
+- **Back to normal**: from a deep pill, choose `↩ Back to normal`.
+- **Solve**: from a deep pill, choose `To Solve →normal` — this both marks
+  the blocker as solved (`status='todo'`) and removes the deep flag.
 
 ## Ideas
 

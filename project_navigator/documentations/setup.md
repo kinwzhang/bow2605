@@ -59,7 +59,7 @@ python -c "import sqlite3; c=sqlite3.connect('backend/project_navigator.db'); \
 ```bash
 cd project_navigator
 python -m pytest tests/ -v
-# 92 tests pass in ~24s
+# 99 tests pass in ~20s
 ```
 
 ## Phase status

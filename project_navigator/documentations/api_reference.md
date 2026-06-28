@@ -152,6 +152,11 @@ Return the full tree for one project in one round-trip.
 
 Stage status values: `todo`, `active`, `blocked`, `done`.
 
+The frontend renders the stage status as a single portal pill that opens
+a dropdown of these 4 options (matching the blocker / sub-item pill).
+`PATCH` is the only endpoint needed to change stage status; there is no
+dedicated `/status` sub-resource.
+
 ### Blockers
 
 | Method   | Path                                                       | Body                                          |

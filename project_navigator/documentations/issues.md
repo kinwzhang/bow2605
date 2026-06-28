@@ -5,7 +5,7 @@ entry links to the original issue report and the commit that fixed it.
 
 | Date       | Issue                                          | Fixed in       |
 |------------|------------------------------------------------|----------------|
-| 2026-06-29 | [CSRF 403, layout width, status dropdown](issues/20260629.md) | `fb36569` |
+| 2026-06-29 | [CSRF 403, layout width, status dropdown](issues/20260629.md) | `fb36569`, `88ffcec`, `975b667` |
 
 ## How to add a new entry
 

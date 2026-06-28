@@ -33,7 +33,7 @@ The first run automatically applies the SQLite migrations in
 ```bash
 cd project_navigator
 python -m pytest tests/ -v
-# 92 tests, ~24s
+# 99 tests, ~20s
 ```
 
 ## Project layout
