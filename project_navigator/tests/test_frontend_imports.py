@@ -84,29 +84,33 @@ def test_no_inline_event_handlers_in_frontend_html() -> None:
     )
 
 
-def test_stage_status_uses_portal_pill_not_inline_buttons() -> None:
-    """Round 3 of 20260629: stage status should use the portal dropdown
-    (same shape as blocker/sub-item), not 4 inline buttons in the footer.
-
-    Catches:
-    - stage-ftr using `<button ... data-stage-status="...">` (the old way)
-    - presence of the dead handler `data-stage-status` in event delegation
+def test_stage_status_is_auto_derived() -> None:
+    """Round 4 of 20260629: stage status is auto-derived from blockers/sub-items,
+    not user-settable. The footer should show a non-interactive badge; the
+    derive + reconcile helpers should exist.
     """
     stages_js = (FRONTEND_JS / "stages.js").read_text(encoding="utf-8")
 
-    # The stage-ftr must contain pillBtn(...), not data-stage-status.
+    # Helpers exist.
+    assert "function deriveStageStatus" in stages_js, (
+        "stages.js must define deriveStageStatus()"
+    )
+    assert "function reconcileStageStatus" in stages_js, (
+        "stages.js must define reconcileStageStatus()"
+    )
+
+    # The legacy manual API is gone.
     assert "data-stage-status" not in stages_js, (
-        "stages.js still uses data-stage-status inline buttons for stage status. "
-        "Stage status should use the portal dropdown via pillBtn() like blockers do."
+        "stages.js still uses data-stage-status — manual stage status is no longer allowed."
+    )
+    assert "pillBtn(s, s.id, '', '')" not in stages_js, (
+        "stage footer should no longer render a portal pill (status is auto-derived)."
     )
 
-    # The stage footer must call pillBtn for the status pill.
-    assert "pillBtn(s, s.id, '', '')" in stages_js, (
-        "stage footer should render a single portal pill via pillBtn(s, s.id, '', '')."
-    )
-
-    # The deep-toggle guard must be in place: stages never show
-    # "Going too deep?" or "Back to normal".
-    assert "isStage" in stages_js, (
-        "openPortalMenu must check isStage to suppress the deep toggle on stages."
-    )
+    # reconcileStageStatus must be called after every blocker/sub-item mutation.
+    # All six mutation functions should mention reconcileStageStatus.
+    for fn in ("addBQ", "delBQ", "addSub", "delSub"):
+        # Each function body calls reconcileStageStatus at least once.
+        assert f"reconcileStageStatus" in stages_js
+    # applyStatus and applyDeep should also reconcile when bqid is set.
+    assert "reconcileStageStatus(stage)" in stages_js

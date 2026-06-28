@@ -361,6 +361,114 @@ def test_idea_wrong_project_404(client):
     assert resp.status_code == 404
 
 
+# ── Stage auto-derivation ────────────────────────────────────────────────
+
+
+def _setup_with_blocker(client, *, stage_status="active"):
+    """Helper: register, create project + stage + blocker. Return CSRF."""
+    csrf = _auth(client)
+    _new_project(client, csrf)
+    client.post("/api/projects/p1/stages",
+                json={"id": "s1", "name": "Plan", "status": stage_status},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b1", "text": "X"},
+                headers={"X-CSRF-Token": csrf})
+    return _csrf_after(client)
+
+
+def test_stage_status_auto_derives_to_done_when_all_items_done(client):
+    csrf = _setup_with_blocker(client)
+    # Mark blocker done.
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "done"},
+                 headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "done"
+
+
+def test_stage_status_auto_derives_to_blocked_when_any_item_deep(client):
+    csrf = _setup_with_blocker(client)
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"deep": True},  # deep=true forces status='park'
+                 headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "blocked"
+
+
+def test_stage_status_auto_derives_to_active_for_mixed_normal(client):
+    csrf = _setup_with_blocker(client)
+    # b1 stays 'todo' → stage should be 'active'
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "active"
+
+
+def test_stage_status_recompute_on_sub_item_change(client):
+    csrf = _setup_with_blocker(client)
+    csrf = _csrf_after(client)
+    # Add a sub-item to the blocker.
+    client.post("/api/projects/p1/blockers/b1/items",
+                json={"id": "i1", "text": "sub"},
+                headers={"X-CSRF-Token": csrf})
+    # Mark BOTH items done — only then is the rollup 'done'.
+    csrf = _csrf_after(client)
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "done"},
+                 headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.patch("/api/projects/p1/subitems/i1",
+                 json={"status": "done"},
+                 headers={"X-CSRF-Token": csrf})
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "done"
+
+
+def test_stage_status_recompute_on_blocker_delete(client):
+    csrf = _setup_with_blocker(client, stage_status="active")
+    # Delete the only blocker → no items → stage keeps the user-set 'active'.
+    csrf = _csrf_after(client)
+    client.delete("/api/projects/p1/blockers/b1",
+                  headers={"X-CSRF-Token": csrf})
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    # No items → derivation returns None → status stays 'active' (set by user).
+    assert snap["stages"][0]["status"] == "active"
+
+
+def test_stage_patch_status_rejected_when_items_exist(client):
+    csrf = _setup_with_blocker(client)
+    resp = client.patch("/api/projects/p1/stages/s1",
+                        json={"status": "done"},
+                        headers={"X-CSRF-Token": csrf})
+    assert resp.status_code == 400
+    assert "auto-derived" in resp.get_json()["error"]
+
+
+def test_stage_patch_name_allowed_when_items_exist(client):
+    csrf = _setup_with_blocker(client)
+    resp = client.patch("/api/projects/p1/stages/s1",
+                        json={"name": "Renamed"},
+                        headers={"X-CSRF-Token": csrf})
+    assert resp.status_code == 200
+    assert resp.get_json()["name"] == "Renamed"
+
+
+def test_stage_patch_status_allowed_when_no_items(client):
+    csrf = _auth(client)
+    _new_project(client, csrf)
+    client.post("/api/projects/p1/stages",
+                json={"id": "s1", "name": "Empty"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    resp = client.patch("/api/projects/p1/stages/s1",
+                        json={"status": "active"},
+                        headers={"X-CSRF-Token": csrf})
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "active"
+
+
 # ── Goal ──────────────────────────────────────────────────────────────────
 
 

@@ -151,6 +151,12 @@ export function applyStatus(val) {
     item.status = val;
   }
   closePortalMenu();
+  // For blocker/sub-item status changes, re-derive the parent stage's
+  // auto-status so the header badge stays in sync.
+  if (bqid) {
+    const stage = S.stages.find((x) => x.id === sid);
+    if (stage) reconcileStageStatus(stage);
+  }
   renderStages();
   _patchItemStatus(sid, bqid, subid, { status: val });
 }
@@ -163,6 +169,10 @@ export function applyDeep(val) {
   item.deep = val;
   item.status = val ? 'park' : 'todo';
   closePortalMenu();
+  if (bqid) {
+    const stage = S.stages.find((x) => x.id === sid);
+    if (stage) reconcileStageStatus(stage);
+  }
   renderStages();
   _patchItemStatus(sid, bqid, subid, { deep: val });
 }
@@ -193,9 +203,11 @@ export function addBQ(sid) {
   const v = inp.value.trim();
   if (!v) return;
   const id = _uid();
-  S.stages.find((x) => x.id === sid).blockers.push({
+  const stage = S.stages.find((x) => x.id === sid);
+  stage.blockers.push({
     id, text: v, status: 'todo', deep: false, items: [],
   });
+  reconcileStageStatus(stage);
   inp.value = '';
   renderStages();
   apiPost(`/api/projects/${pid()}/stages/${sid}/blockers`, {
@@ -207,6 +219,7 @@ export function delBQ(sid, bqid, e) {
   e.stopPropagation();
   const s = S.stages.find((x) => x.id === sid);
   s.blockers = s.blockers.filter((x) => x.id !== bqid);
+  reconcileStageStatus(s);
   renderStages();
   apiDelete(`/api/projects/${pid()}/blockers/${bqid}`).catch((e2) => {
     console.error('delBQ failed', e2);
@@ -224,9 +237,10 @@ export function addSub(sid, bqid) {
   const v = inp.value.trim();
   if (!v) return;
   const id = _uid();
-  S.stages.find((x) => x.id === sid).blockers
-    .find((x) => x.id === bqid)
-    .items.push({ id, text: v, status: 'todo', deep: false });
+  const stage = S.stages.find((x) => x.id === sid);
+  const bq = stage.blockers.find((x) => x.id === bqid);
+  bq.items.push({ id, text: v, status: 'todo', deep: false });
+  reconcileStageStatus(stage);
   inp.value = '';
   renderStages();
   apiPost(`/api/projects/${pid()}/blockers/${bqid}/items`, {
@@ -235,9 +249,10 @@ export function addSub(sid, bqid) {
 }
 
 export function delSub(sid, bqid, subid) {
-  const bq = S.stages.find((x) => x.id === sid).blockers
-    .find((x) => x.id === bqid);
+  const stage = S.stages.find((x) => x.id === sid);
+  const bq = stage.blockers.find((x) => x.id === bqid);
   bq.items = bq.items.filter((x) => x.id !== subid);
+  reconcileStageStatus(stage);
   renderStages();
   apiDelete(`/api/projects/${pid()}/subitems/${subid}`).catch((e) => {
     console.error('delSub failed', e);
@@ -308,6 +323,36 @@ export function deleteStage(id) {
 
 function _uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+}
+
+// ── Stage status auto-derivation ──────────────────────────────────────────
+// Mirrors backend.models.derive_stage_status. Stage status is a rollup of
+// its blockers + sub-items:
+//   - no items  → no derivation (status is whatever it was)
+//   - all done  → 'done'
+//   - any deep  → 'blocked' (park/review/nice/solve)
+//   - otherwise → 'active'
+// Called after every blocker/sub-item mutation. Re-render reads stage.status,
+// so the header badge and any downstream UI update automatically.
+
+const DEEP_STATUSES_FOR_DERIVE = new Set(['park', 'review', 'nice', 'solve']);
+
+function deriveStageStatus(stage) {
+  const items = [];
+  for (const bq of (stage.blockers || [])) {
+    items.push(bq);
+    for (const it of (bq.items || [])) items.push(it);
+  }
+  if (!items.length) return null;
+  const statuses = items.map((i) => i.status);
+  if (statuses.every((s) => s === 'done')) return 'done';
+  if (statuses.some((s) => DEEP_STATUSES_FOR_DERIVE.has(s))) return 'blocked';
+  return 'active';
+}
+
+function reconcileStageStatus(stage) {
+  const derived = deriveStageStatus(stage);
+  if (derived !== null) stage.status = derived;
 }
 
 function pillBtn(item, sid, bqid, subid) {
@@ -443,7 +488,7 @@ export function renderStages() {
         </div>
         <div class="stage-ftr">
           <div class="status-btns">
-            ${pillBtn(s, s.id, '', '')}
+            <span class="spill ${stageBadgeCls}" style="pointer-events:none" title="Auto-derived from blockers and sub-items">${stageBadgeLbl}</span>
           </div>
           <button class="btn-ghost" style="color:var(--text-3);font-size:12px" data-del-stage="${s.id}">Delete stage</button>
         </div>
