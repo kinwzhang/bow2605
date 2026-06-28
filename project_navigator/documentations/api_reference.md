@@ -158,15 +158,15 @@ Once a stage has any blockers or sub-items, its `status` field is
 
 `active` > `blocked` > `review` > `park` > (all `done`) > `nice`
 
-| Priority | Condition                                          | Stage status |
-|---------:|----------------------------------------------------|--------------|
-| 1 (top)  | Any item is `active`                                | `active`     |
-| 2        | Any item is `blocked`                              | `blocked`    |
-| 3        | Any item is `review`                               | `review`     |
-| 4        | Any item is `park` (display: "Parked")             | `park`       |
-| 5        | All items are `done`                                | `done`       |
-| 6        | Any item is `nice` (display: "Nice to have")       | `nice`       |
-| (fallback) | Items are all `todo` / `solve` / mixed-neutral   | `active`     |
+| Priority | Condition                                       | Stage status |
+|---------:|-------------------------------------------------|--------------|
+| 1 (top)  | Any item is active                                | `active`     |
+| 2        | Any item is blocked                              | `blocked`    |
+| 3        | Any item is review                                | `review`     |
+| 4        | Any item is park — display label: Parked         | `park`       |
+| 5        | All items are done                                | `done`       |
+| 6        | Any item is nice — display label: Nice to have   | `nice`       |
+| (fallback) | All items are todo, solve, or mixed-neutral    | `active`     |
 
 Items in `todo` or `solve` are **neutral** — they do not trigger any
 priority. The fallback kicks in only when no item matches the list.
@@ -212,13 +212,13 @@ Ideas have no status; `PATCH` is not exposed.
 
 ## Error codes
 
-| Status | code                   | Meaning                                            |
-|-------:|------------------------|----------------------------------------------------|
-| 400    | `validation`           | Invalid input — missing field, bad status, etc.    |
-| 401    | `unauthenticated`      | No session                                         |
-| 401    | `invalid_credentials`  | Wrong username or password (login only)            |
-| 403    | `forbidden`            | CSRF token missing or invalid                      |
-| 404    | `not_found`            | Resource does not exist, or is owned by another user |
-| 409    | `duplicate`            | Username already exists (register only)            |
-| 409    | `collision`            | Client-generated id collision                      |
-| 500    | `internal`             | Unhandled exception — logged with traceback        |
+| Status | code                  | Meaning                                          |
+|-------:|-----------------------|--------------------------------------------------|
+| 400    | `validation`          | Invalid input — missing field or bad status     |
+| 401    | `unauthenticated`     | No session                                       |
+| 401    | `invalid_credentials` | Wrong username or password at login             |
+| 403    | `forbidden`           | CSRF token missing or invalid                    |
+| 404    | `not_found`           | Resource missing or owned by another user       |
+| 409    | `duplicate`           | Username already exists at register             |
+| 409    | `collision`           | Client-generated id collision                   |
+| 500    | `internal`            | Unhandled exception — server logged a traceback |
