@@ -199,13 +199,13 @@ Ideas have no status; `PATCH` is not exposed.
 
 ## Error codes
 
-| Status | `code`                | Meaning                                           |
-|-------:|-----------------------|---------------------------------------------------|
-| 400    | `validation`          | Invalid input (missing field, bad status, etc.)   |
-| 401    | `unauthenticated`     | No session                                        |
-| 401    | `invalid_credentials` | Wrong username/password (login only)              |
-| 403    | `forbidden`           | CSRF token missing/invalid                        |
-| 404    | `not_found`           | Resource does not exist or is owned by another user |
-| 409    | `duplicate`           | Username already exists (register only)           |
-| 409    | `collision`           | Client-generated id collision                     |
-| 500    | `internal`            | Unhandled exception (logged with traceback)       |
+| Status | code                   | Meaning                                            |
+|-------:|------------------------|----------------------------------------------------|
+| 400    | `validation`           | Invalid input — missing field, bad status, etc.    |
+| 401    | `unauthenticated`      | No session                                         |
+| 401    | `invalid_credentials`  | Wrong username or password (login only)            |
+| 403    | `forbidden`            | CSRF token missing or invalid                      |
+| 404    | `not_found`            | Resource does not exist, or is owned by another user |
+| 409    | `duplicate`            | Username already exists (register only)            |
+| 409    | `collision`            | Client-generated id collision                      |
+| 500    | `internal`             | Unhandled exception — logged with traceback        |
