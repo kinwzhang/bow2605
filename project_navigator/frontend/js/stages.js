@@ -80,8 +80,7 @@ function getItem(sid, bqid, subid) {
   return bq.items.find((x) => x.id === subid) || null;
 }
 
-export function openPortalMenu(e, sid, bqid, subid) {
-  e.stopPropagation();
+export function openPortalMenu(btnEl, sid, bqid, subid) {
   const pm = document.getElementById('portalMenu');
   const item = getItem(sid, bqid, subid);
   if (!item) return;
@@ -104,12 +103,18 @@ export function openPortalMenu(e, sid, bqid, subid) {
     });
   });
 
-  const rect = e.currentTarget.getBoundingClientRect();
+  // Position the menu just below the pill that triggered it. The menu is
+  // position:fixed, so coordinates are viewport-relative (no scrollY).
+  const rect = btnEl.getBoundingClientRect();
   pm.style.display = 'block';
   const pmW = pm.offsetWidth;
+  const pmH = pm.offsetHeight;
   let left = rect.left;
   if (left + pmW > window.innerWidth - 8) left = window.innerWidth - pmW - 8;
-  pm.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
+  // Flip upward if there isn't room below the trigger.
+  let top = rect.bottom + 4;
+  if (top + pmH > window.innerHeight - 8) top = rect.top - pmH - 4;
+  pm.style.top = top + 'px';
   pm.style.left = left + 'px';
 }
 
@@ -357,6 +362,20 @@ function renderIdeas(s) {
 export function renderStages() {
   const el = document.getElementById('stageList');
   const empty = document.getElementById('emptyMsg');
+  const toolbar = document.querySelector('.toolbar');
+  const noProjectMsg = document.getElementById('noProjectMsg');
+
+  // Hide the stage-creation UI entirely when there's no active project —
+  // otherwise clicking "+ Add stage" would POST to /api/projects/null/stages.
+  const hasProject = !!activeProjectId;
+  if (toolbar) toolbar.style.display = hasProject ? '' : 'none';
+  if (noProjectMsg) noProjectMsg.style.display = hasProject ? 'none' : 'block';
+
+  if (!hasProject) {
+    el.innerHTML = '';
+    empty.style.display = 'none';
+    return;
+  }
   if (!S.stages.length) {
     el.innerHTML = '';
     empty.style.display = 'block';
@@ -429,8 +448,9 @@ export function renderStages() {
   el.onclick = (ev) => {
     const t = ev.target.closest('[data-portal]');
     if (t) {
+      ev.stopPropagation();
       const [sid, bqid, subid] = t.dataset.portal.split('|');
-      openPortalMenu(ev, sid, bqid || null, subid || null);
+      openPortalMenu(t, sid, bqid || null, subid || null);
       return;
     }
     const delSubEl = ev.target.closest('[data-del-sub]');

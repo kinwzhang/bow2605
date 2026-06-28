@@ -1,0 +1,34 @@
+1. Cannot create new project in the project navigator.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+127.0.0.1 - - [28/Jun/2026 21:11:03] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:03] "GET /static/js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:03] "GET /static/css/login.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:03] "GET /static/js/state.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:03] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "POST /api/auth/register HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/css/main.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/css/sidebar.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/js/app.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/css/header.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/js/projects.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/js/stages.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/js/state.js HTTP/1.1" 304 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/js/auth.js HTTP/1.1" 304 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /static/js/api.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /api/auth/me HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:14] "GET /api/auth/me HTTP/1.1" 200 -
+127.0.0.1 - - [28/Jun/2026 21:11:27] "POST /api/projects HTTP/1.1" 403 -
+127.0.0.1 - - [28/Jun/2026 21:11:48] "POST /api/projects/null/stages HTTP/1.1" 403 -
+127.0.0.1 - - [28/Jun/2026 21:12:04] "POST /api/projects HTTP/1.1" 403 -
+
+With error CSRF token missing or invalid.
+
+2, The width of the project navigator is too small, making it difficult to read details.
+Make it wider and more user-friendly, only srink when the window is resized to a smaller width.
+
+3, the marking tags(ToDo, Active, Block, Done) should be drop down from the item itself, but no drop down menu appears when clicking on the tags.
+
+4, review the markinig tag behaviors from the project_navigaor.html, which is having the correct and expected behavior, and apply the same logic.

@@ -1,7 +1,9 @@
 // api.js — fetch() wrapper with CSRF + 401 handling.
 //
-// Phase 6: real implementation. All public functions throw ApiError on
-// non-2xx responses. 401 triggers a redirect to /login.html.
+// All public functions throw ApiError on non-2xx responses. 401 triggers a
+// redirect to /login.html. Any response carrying a `csrf_token` updates the
+// in-memory CSRF value automatically, so the next mutation uses the freshest
+// session-stored token.
 
 import { csrf, setCsrf } from './state.js';
 
@@ -43,6 +45,12 @@ async function request(method, path, body) {
 
   let payload = null;
   try { payload = await resp.json(); } catch (_) { /* empty body or 204 */ }
+
+  // Auto-sync the CSRF token. /api/auth/me rotates the token on every call;
+  // any future endpoint that rotates will be picked up here too.
+  if (payload && typeof payload.csrf_token === 'string') {
+    setCsrf(payload.csrf_token);
+  }
 
   if (!resp.ok) {
     throw new ApiError(

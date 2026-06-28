@@ -220,6 +220,43 @@ def test_login_flow_can_create_and_view_project(client):
     assert any(proj["id"] == "p1" for proj in me["projects"])
 
 
+def test_csrf_rotation_does_not_break_subsequent_mutations(client):
+    """The frontend calls /me to refresh the sidebar after register; /me
+    rotates the CSRF token. The next mutation must use the rotated token,
+    not the one from the register response.
+
+    This regression test simulates the flow that broke in issue 20260629:
+    register → /me → mutation. Pre-fix, the frontend kept the stale token
+    from register and got 403 on the mutation.
+    """
+    r = client.post("/api/auth/register",
+                    json={"username": "rotuser", "password": "validpw1"})
+    initial_csrf = r.get_json()["csrf_token"]
+
+    # Simulate the frontend calling /me after register (e.g. to refresh
+    # sidebar). /me rotates the token in the session.
+    me_resp = client.get("/api/auth/me")
+    rotated_csrf = me_resp.get_json()["csrf_token"]
+    assert rotated_csrf != initial_csrf, "expected /me to rotate the CSRF token"
+
+    # The next mutation must use the rotated token. If the frontend forgot
+    # to update its cached token, this would 403.
+    resp = client.post(
+        "/api/projects",
+        json={"id": "p1", "name": "X"},
+        headers={"X-CSRF-Token": rotated_csrf},
+    )
+    assert resp.status_code == 200
+
+    # And the original (stale) token must now be rejected.
+    resp_stale = client.post(
+        "/api/projects",
+        json={"id": "p2", "name": "Y"},
+        headers={"X-CSRF-Token": initial_csrf},
+    )
+    assert resp_stale.status_code == 403
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 
