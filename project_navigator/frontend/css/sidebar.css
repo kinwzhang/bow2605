@@ -88,6 +88,11 @@
   font-size: 12px;
   padding: 5px 10px;
 }
+.highlight-pulse { animation: highlightPulse 1.6s ease-out 1; }
+@keyframes highlightPulse {
+  0%   { background: var(--accent-bg); }
+  100% { background: transparent; }
+}
 
 #sidebar-list {
   flex: 1;

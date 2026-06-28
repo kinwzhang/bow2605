@@ -8,7 +8,7 @@ import {
   S, openStages, openBQ, currentProject, activeProjectId,
   ST_CLS, ST_LBL, STAGE_ST, STAGE_ST_LBL, STAGE_ST_CLS, esc,
 } from './state.js';
-import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from './api.js';
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from './api.js';
 
 function pid() { return activeProjectId; }
 
@@ -369,7 +369,19 @@ export function renderStages() {
   // otherwise clicking "+ Add stage" would POST to /api/projects/null/stages.
   const hasProject = !!activeProjectId;
   if (toolbar) toolbar.style.display = hasProject ? '' : 'none';
-  if (noProjectMsg) noProjectMsg.style.display = hasProject ? 'none' : 'block';
+  if (noProjectMsg) {
+    noProjectMsg.style.display = hasProject ? 'none' : 'block';
+    // Wire the "+ New project" hint to open the sidebar's new-project form.
+    const focusEl = noProjectMsg.querySelector('[data-focus-new]');
+    if (focusEl) {
+      focusEl.style.cursor = 'pointer';
+      focusEl.style.color = 'var(--accent)';
+      focusEl.onclick = () => {
+        const btn = document.getElementById('sidebar-new-btn');
+        if (btn) btn.click();
+      };
+    }
+  }
 
   if (!hasProject) {
     el.innerHTML = '';

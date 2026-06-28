@@ -32,3 +32,7 @@ Make it wider and more user-friendly, only srink when the window is resized to a
 3, the marking tags(ToDo, Active, Block, Done) should be drop down from the item itself, but no drop down menu appears when clicking on the tags.
 
 4, review the markinig tag behaviors from the project_navigaor.html, which is having the correct and expected behavior, and apply the same logic.
+
+Round 2:
+1. project creation issue is changed: when input project name, get the error message "apiPut is not defined"
+2. after input ultimate goal, the stage creation is not showing up.

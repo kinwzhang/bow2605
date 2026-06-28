@@ -4,7 +4,7 @@ import {
   setActiveProjectId, setCurrentProject, currentProject,
   hydrateFromSnapshot, currentUser, activeProjectId, S,
 } from './state.js';
-import { apiGet, apiPost, apiPatch, apiDelete } from './api.js';
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from './api.js';
 import { renderAll } from './stages.js';
 import { logout } from './auth.js';
 
