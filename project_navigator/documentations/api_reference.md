@@ -150,12 +150,24 @@ Return the full tree for one project in one round-trip.
 | `PATCH`  | `/api/projects/<pid>/stages/<sid>`                  | `{ name?, status?, position? }`               |
 | `DELETE` | `/api/projects/<pid>/stages/<sid>`                  | —                                             |
 
-Stage status values: `todo`, `active`, `blocked`, `done`.
+#### Stage status is auto-derived
 
-The frontend renders the stage status as a single portal pill that opens
-a dropdown of these 4 options (matching the blocker / sub-item pill).
-`PATCH` is the only endpoint needed to change stage status; there is no
-dedicated `/status` sub-resource.
+Once a stage has any blockers or sub-items, its `status` field is
+**auto-derived** from the rollup of its items:
+
+| Condition                                            | Stage status |
+|------------------------------------------------------|--------------|
+| No blockers or sub-items                             | Unchanged    |
+| All items are `done`                                 | `done`       |
+| Any item is `park` / `review` / `nice` / `solve`     | `blocked`    |
+| Otherwise                                            | `active`     |
+
+`PATCH` with `status: ...` returns `400 validation` if the stage has any
+items. `name` and `position` can still be changed freely.
+
+The frontend mirrors the same rule for optimistic UI: the header badge
+and the footer status badge both update instantly after every blocker /
+sub-item mutation, without a server round-trip.
 
 ### Blockers
 

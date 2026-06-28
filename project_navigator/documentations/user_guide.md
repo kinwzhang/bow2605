@@ -41,10 +41,27 @@ sign in again.
 
 - **Add** a stage with `+ Add stage`; type the name, press Enter or click Add.
 - **Rename** / delete by expanding the stage and using the footer buttons.
-- **Set status** via the footer pill (click it to open a dropdown, pick one
-  of `To Do`, `Active`, `Blocked`, `Done`). Same dropdown UX as blockers.
+- **Status is auto-derived** from the stage's blockers and sub-items (see
+  the rollup rule below). It is shown as a read-only badge on the stage
+  header and footer.
 - **Expand / collapse** a stage by clicking its header (the `▾` rotates).
 - **Reorder**: not yet supported via drag; editing is by delete + re-create.
+
+### Stage status rollup rule
+
+The stage status is recomputed every time a blocker or sub-item changes.
+It's a rollup of all blocker + sub-item statuses:
+
+| Condition                                            | Stage status |
+|------------------------------------------------------|--------------|
+| No blockers or sub-items                             | Unchanged (whatever you set) |
+| All blockers and sub-items are `done`                | `done`       |
+| Any blocker or sub-item is in a deep mode (`park`/`review`/`nice`/`solve`) | `blocked`     |
+| Otherwise (any non-done, non-deep)                   | `active`     |
+
+You cannot set stage status manually once any blocker or sub-item exists;
+the API will reject the change with `400 validation`. Empty stages can be
+renamed but their status remains whatever they were created with.
 
 ## Blockers & questions
 
