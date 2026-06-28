@@ -42,8 +42,13 @@ export function clearCache() {
 }
 
 // Status enum mirrors — kept in sync with backend STAGE_STATUSES / ITEM_STATUSES.
-export const STAGE_STATUSES = ['todo', 'active', 'blocked', 'done'];
+export const STAGE_STATUSES = ['todo', 'active', 'blocked', 'done', 'park', 'review', 'nice'];
 export const ITEM_STATUSES = ['todo', 'active', 'blocked', 'done', 'park', 'review', 'nice', 'solve'];
+
+// Priority order for the stage status rollup (top wins). Must match
+// backend.models.STAGE_DERIVE_PRIORITY. Items in 'todo' or 'solve' are
+// neutral and do not trigger any priority.
+export const STAGE_DERIVE_PRIORITY = ['active', 'blocked', 'review', 'park', 'done', 'nice'];
 
 export const ST_CLS = {
   todo: 'st-todo', active: 'st-active', blocked: 'st-blocked', done: 'st-done',
@@ -51,7 +56,7 @@ export const ST_CLS = {
 };
 export const ST_LBL = {
   todo: 'To Do', active: 'Active', blocked: 'Blocked', done: 'Done',
-  park: 'Park', review: 'Review', nice: 'Nice to have', solve: 'To Solve',
+  park: 'Parked', review: 'Review', nice: 'Nice to have', solve: 'To Solve',
 };
 
 // Client-side id generator (matches legacy uid()).

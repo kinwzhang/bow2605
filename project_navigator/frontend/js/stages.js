@@ -6,7 +6,7 @@
 
 import {
   S, openStages, openBQ, currentProject, activeProjectId,
-  ST_CLS, ST_LBL, esc,
+  ST_CLS, ST_LBL, STAGE_DERIVE_PRIORITY, esc,
 } from './state.js';
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from './api.js';
 
@@ -327,15 +327,12 @@ function _uid() {
 
 // ── Stage status auto-derivation ──────────────────────────────────────────
 // Mirrors backend.models.derive_stage_status. Stage status is a rollup of
-// its blockers + sub-items:
-//   - no items  → no derivation (status is whatever it was)
-//   - all done  → 'done'
-//   - any deep  → 'blocked' (park/review/nice/solve)
-//   - otherwise → 'active'
+// its blockers + sub-items, with priority:
+//   active > blocked > review > parked > done > nice
+// Items in 'todo' or 'solve' are neutral; if nothing matches the priority
+// list, the stage falls back to 'active'.
 // Called after every blocker/sub-item mutation. Re-render reads stage.status,
 // so the header badge and any downstream UI update automatically.
-
-const DEEP_STATUSES_FOR_DERIVE = new Set(['park', 'review', 'nice', 'solve']);
 
 function deriveStageStatus(stage) {
   const items = [];
@@ -345,9 +342,14 @@ function deriveStageStatus(stage) {
   }
   if (!items.length) return null;
   const statuses = items.map((i) => i.status);
-  if (statuses.every((s) => s === 'done')) return 'done';
-  if (statuses.some((s) => DEEP_STATUSES_FOR_DERIVE.has(s))) return 'blocked';
-  return 'active';
+  for (const candidate of STAGE_DERIVE_PRIORITY) {
+    if (candidate === 'done') {
+      if (statuses.every((s) => s === 'done')) return 'done';
+    } else if (statuses.includes(candidate)) {
+      return candidate;
+    }
+  }
+  return 'active'; // fallback for all-todo / all-solve / mixed-neutral
 }
 
 function reconcileStageStatus(stage) {
@@ -460,9 +462,11 @@ export function renderStages() {
       const deepCnt = s.blockers.filter((b) => b.deep).length;
       const stageBadgeCls = {
         todo: 'st-todo', active: 'st-active', blocked: 'st-blocked', done: 'st-done',
+        park: 'st-park', review: 'st-review', nice: 'st-nice',
       }[s.status];
       const stageBadgeLbl = {
         todo: '○ To do', active: '● Active', blocked: '⊘ Blocked', done: '✓ Done',
+        park: '⚑ Parked', review: '◐ Review', nice: '✦ Nice to have',
       }[s.status];
 
       const body = isOpen

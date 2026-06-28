@@ -153,17 +153,30 @@ Return the full tree for one project in one round-trip.
 #### Stage status is auto-derived
 
 Once a stage has any blockers or sub-items, its `status` field is
-**auto-derived** from the rollup of its items:
+**auto-derived** from the rollup of its items, with **priority order**
+(first match wins):
 
-| Condition                                            | Stage status |
-|------------------------------------------------------|--------------|
-| No blockers or sub-items                             | Unchanged    |
-| All items are `done`                                 | `done`       |
-| Any item is `park` / `review` / `nice` / `solve`     | `blocked`    |
-| Otherwise                                            | `active`     |
+`active` > `blocked` > `review` > `park` > (all `done`) > `nice`
 
-`PATCH` with `status: ...` returns `400 validation` if the stage has any
-items. `name` and `position` can still be changed freely.
+| Priority | Condition                                          | Stage status |
+|---------:|----------------------------------------------------|--------------|
+| 1 (top)  | Any item is `active`                                | `active`     |
+| 2        | Any item is `blocked`                              | `blocked`    |
+| 3        | Any item is `review`                               | `review`     |
+| 4        | Any item is `park` (display: "Parked")             | `park`       |
+| 5        | All items are `done`                                | `done`       |
+| 6        | Any item is `nice` (display: "Nice to have")       | `nice`       |
+| (fallback) | Items are all `todo` / `solve` / mixed-neutral   | `active`     |
+
+Items in `todo` or `solve` are **neutral** — they do not trigger any
+priority. The fallback kicks in only when no item matches the list.
+
+The seven stage statuses are `todo`, `active`, `blocked`, `done`, `park`,
+`review`, `nice` (see `STAGE_STATUSES` in `backend/database.py`).
+
+`PATCH /api/projects/<pid>/stages/<sid>` with `status: ...` returns
+`400 validation` if the stage has any items. `name` and `position` can
+still be changed freely.
 
 The frontend mirrors the same rule for optimistic UI: the header badge
 and the footer status badge both update instantly after every blocker /

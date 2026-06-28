@@ -50,14 +50,23 @@ sign in again.
 ### Stage status rollup rule
 
 The stage status is recomputed every time a blocker or sub-item changes.
-It's a rollup of all blocker + sub-item statuses:
+It's a rollup of all blocker + sub-item statuses, with **priority order**
+(first match wins):
 
-| Condition                                            | Stage status |
-|------------------------------------------------------|--------------|
-| No blockers or sub-items                             | Unchanged (whatever you set) |
-| All blockers and sub-items are `done`                | `done`       |
-| Any blocker or sub-item is in a deep mode (`park`/`review`/`nice`/`solve`) | `blocked`     |
-| Otherwise (any non-done, non-deep)                   | `active`     |
+`active` > `blocked` > `review` > `park` > (all `done`) > `nice`
+
+| Priority | Condition                                          | Stage status |
+|---------:|----------------------------------------------------|--------------|
+| 1 (top)  | Any blocker or sub-item is `active`                | `active`     |
+| 2        | Any item is `blocked`                              | `blocked`    |
+| 3        | Any item is `review`                               | `review`     |
+| 4        | Any item is `park` (display: "Parked")             | `park`       |
+| 5        | All blockers and sub-items are `done`              | `done`       |
+| 6        | Any item is `nice` (display: "Nice to have")       | `nice`       |
+| (fallback) | Items are all `todo` / `solve` / mixed-neutral   | `active`     |
+
+Items in `todo` or `solve` are **neutral** — they do not trigger any
+priority. The fallback kicks in only when no item matches the list.
 
 You cannot set stage status manually once any blocker or sub-item exists;
 the API will reject the change with `400 validation`. Empty stages can be

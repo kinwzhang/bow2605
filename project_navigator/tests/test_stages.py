@@ -94,7 +94,7 @@ def test_create_stage_rejects_bad_status(client):
     csrf = _auth(client)
     _new_project(client, csrf)
     resp = client.post("/api/projects/p1/stages",
-                       json={"id": "s1", "name": "Plan", "status": "park"},
+                       json={"id": "s1", "name": "Plan", "status": "frozen"},
                        headers={"X-CSRF-Token": csrf})
     assert resp.status_code == 400
     assert resp.get_json()["code"] == "validation"
@@ -164,7 +164,7 @@ def test_patch_stage_invalid_status(client):
                 json={"id": "s1", "name": "Plan"},
                 headers={"X-CSRF-Token": csrf})
     resp = client.patch("/api/projects/p1/stages/s1",
-                        json={"status": "park"},
+                        json={"status": "frozen"},
                         headers={"X-CSRF-Token": csrf})
     assert resp.status_code == 400
 
@@ -389,14 +389,113 @@ def test_stage_status_auto_derives_to_done_when_all_items_done(client):
     assert snap["stages"][0]["status"] == "done"
 
 
-def test_stage_status_auto_derives_to_blocked_when_any_item_deep(client):
+def test_stage_priority_active_wins_over_everything(client):
+    """Any 'active' item wins, even when other items are blocked / parked / done."""
+    csrf = _setup_with_blocker(client)
+    # Mix everything: blocker is active, add deep and done blockers.
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "active"},
+                 headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "deep", "deep": True},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b3", "text": "done", "status": "done"},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "active"
+
+
+def test_stage_priority_blocked_over_review_and_done(client):
+    csrf = _setup_with_blocker(client)
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "blocked"},
+                 headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "review", "status": "review"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b3", "text": "done", "status": "done"},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "blocked"
+
+
+def test_stage_priority_review_over_parked(client):
+    csrf = _setup_with_blocker(client)
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "review"},
+                 headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "parked", "deep": True},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "review"
+
+
+def test_stage_priority_parked_over_done(client):
+    csrf = _setup_with_blocker(client)
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "done"},
+                 headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "parked", "deep": True},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "park"
+
+
+def test_stage_priority_nice_fallback_when_mixed_with_done(client):
+    """All done wins; mix with nice → nice."""
+    csrf = _setup_with_blocker(client)
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "nice"},
+                 headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "done", "status": "done"},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "nice"
+
+
+def test_stage_priority_all_done_wins_over_nice(client):
+    """When every item is done, stage is 'done' (the all-done rule beats nice)."""
+    csrf = _setup_with_blocker(client)
+    # Make both items done.
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "done"},
+                 headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "also done", "status": "done"},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "done"
+
+
+def test_stage_status_auto_derives_to_parked_when_any_item_parked(client):
     csrf = _setup_with_blocker(client)
     client.patch("/api/projects/p1/blockers/b1",
                  json={"deep": True},  # deep=true forces status='park'
                  headers={"X-CSRF-Token": csrf})
 
     snap = client.get("/api/projects/p1/snapshot").get_json()
-    assert snap["stages"][0]["status"] == "blocked"
+    # New priority: active > blocked > review > parked > done > nice.
+    # 'park' wins over 'blocked'.
+    assert snap["stages"][0]["status"] == "park"
 
 
 def test_stage_status_auto_derives_to_active_for_mixed_normal(client):

@@ -15,7 +15,7 @@ DEFAULT_DB_PATH = Path(__file__).resolve().parent / "project_navigator.db"
 MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
 
 # Status enums exported so models.py can validate against one source of truth.
-STAGE_STATUSES = ("todo", "active", "blocked", "done")
+STAGE_STATUSES = ("todo", "active", "blocked", "done", "park", "review", "nice")
 ITEM_STATUSES = ("todo", "active", "blocked", "done", "park", "review", "nice", "solve")
 
 

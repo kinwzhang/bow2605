@@ -266,16 +266,32 @@ def next_project_position(conn: sqlite3.Connection, user_id: int) -> int:
 # Statuses that count as "deep" / "parked" for stage rollup.
 DEEP_STATUSES = frozenset({"park", "review", "nice", "solve"})
 
+# Priority order for stage status rollup (top wins):
+#
+#     active > blocked > review > parked > done > nice
+#
+# Items in `todo` or `solve` are neutral — they do not trigger any priority.
+# If no priority matches (e.g. all items are `todo`/`solve`), the stage
+# defaults to `active` to indicate work is pending.
+STAGE_DERIVE_PRIORITY = ("active", "blocked", "review", "park", "done", "nice")
+
 
 def derive_stage_status(conn: sqlite3.Connection, stage_id: str) -> Optional[str]:
     """Auto-derive a stage's status from its blockers + sub-items.
 
-    Returns:
-        - ``"done"`` if every blocker and sub-item has status ``done``
-        - ``"blocked"`` if any blocker or sub-item is in a deep status
-          (``park``, ``review``, ``nice``, ``solve``)
-        - ``"active"`` if any item exists and none of the above matches
-        - ``None`` if the stage has no blockers (caller decides what to do)
+    Returns one of the seven stage statuses (``todo``, ``active``,
+    ``blocked``, ``done``, ``park``, ``review``, ``nice``) or ``None``
+    when the stage has no blockers (caller decides what to do).
+
+    Priority order — first match wins:
+
+      1. ``active``  — any item is ``active``
+      2. ``blocked`` — any item is ``blocked``
+      3. ``review``  — any item is ``review``
+      4. ``park``    — any item is ``park`` (display label: "Parked")
+      5. ``done``    — every item is ``done``
+      6. ``nice``    — any item is ``nice`` (display label: "Nice to have")
+      7. ``active``  — fallback (all ``todo``/``solve``/mixed-neutral)
 
     The rollup rule lives here so the backend is the single source of truth;
     the frontend mirrors it for optimistic UX.
@@ -295,10 +311,14 @@ def derive_stage_status(conn: sqlite3.Connection, stage_id: str) -> Optional[str
         return None
 
     statuses = [row["status"] for row in rows]
-    if all(s == "done" for s in statuses):
-        return "done"
-    if any(s in DEEP_STATUSES for s in statuses):
-        return "blocked"
+    for candidate in STAGE_DERIVE_PRIORITY:
+        if candidate == "done":
+            if all(s == "done" for s in statuses):
+                return "done"
+        else:
+            if candidate in statuses:
+                return candidate
+    # Fallback: nothing matched (e.g. all items are ``todo``/``solve``).
     return "active"
 
 
@@ -865,6 +885,7 @@ __all__ = [
     "STAGE_STATUSES",
     "ITEM_STATUSES",
     "DEEP_STATUSES",
+    "STAGE_DERIVE_PRIORITY",
     "validate_username",
     "validate_password",
     "validate_status",
