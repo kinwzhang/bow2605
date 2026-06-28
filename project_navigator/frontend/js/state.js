@@ -53,11 +53,6 @@ export const ST_LBL = {
   todo: 'To Do', active: 'Active', blocked: 'Blocked', done: 'Done',
   park: 'Park', review: 'Review', nice: 'Nice to have', solve: 'To Solve',
 };
-export const STAGE_ST = ['todo', 'active', 'blocked', 'done'];
-export const STAGE_ST_LBL = { todo: 'To do', active: 'Active', blocked: 'Blocked', done: 'Done' };
-export const STAGE_ST_CLS = {
-  todo: 'on-todo', active: 'on-active', blocked: 'on-blocked', done: 'on-done',
-};
 
 // Client-side id generator (matches legacy uid()).
 export function uid() {

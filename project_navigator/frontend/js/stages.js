@@ -6,7 +6,7 @@
 
 import {
   S, openStages, openBQ, currentProject, activeProjectId,
-  ST_CLS, ST_LBL, STAGE_ST, STAGE_ST_LBL, STAGE_ST_CLS, esc,
+  ST_CLS, ST_LBL, esc,
 } from './state.js';
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from './api.js';
 
@@ -85,13 +85,20 @@ export function openPortalMenu(btnEl, sid, bqid, subid) {
   const item = getItem(sid, bqid, subid);
   if (!item) return;
 
-  const statuses = item.deep ? DEEP : NORM;
+  // Stages have no `deep` mode — they get the 4 normal statuses only and
+  // no "Going too deep?" toggle.
+  const isStage = !bqid;
+  const statuses = (!isStage && item.deep) ? DEEP : NORM;
+
   let html = statuses
     .map((s) => `<button class="pmitem" data-status="${s.v}">${s.l}</button>`)
     .join('');
-  html += item.deep
-    ? `<button class="pmitem sep-back" data-deep="false">↩ Back to normal</button>`
-    : `<button class="pmitem sep" data-deep="true">⚑ Going too deep?</button>`;
+
+  if (!isStage) {
+    html += item.deep
+      ? `<button class="pmitem sep-back" data-deep="false">↩ Back to normal</button>`
+      : `<button class="pmitem sep" data-deep="true">⚑ Going too deep?</button>`;
+  }
 
   pm.innerHTML = html;
   _menuCtx = { sid, bqid: bqid || null, subid: subid || null };
@@ -133,8 +140,11 @@ export function applyStatus(val) {
   const { sid, bqid, subid } = _menuCtx;
   const item = getItem(sid, bqid, subid);
   if (!item) return;
-  // Mirror legacy applyStatus: 'solve' also clears deep.
-  if (val === 'solve') {
+
+  // 'solve' is only emitted from the deep toggle, which only appears for
+  // blockers / sub-items. For stages (bqid is null), val is always one of
+  // the 4 normal stage statuses.
+  if (bqid && val === 'solve') {
     item.deep = false;
     item.status = 'todo';
   } else {
@@ -158,9 +168,18 @@ export function applyDeep(val) {
 }
 
 function _patchItemStatus(sid, bqid, subid, body) {
-  const url = subid
-    ? `/api/projects/${pid()}/subitems/${subid}`
-    : `/api/projects/${pid()}/blockers/${bqid}`;
+  // Routes:
+  //   subid set → /subitems/<subid>
+  //   bqid set  → /blockers/<bqid>
+  //   neither   → /stages/<sid>  (stage-level status change)
+  let url;
+  if (subid) {
+    url = `/api/projects/${pid()}/subitems/${subid}`;
+  } else if (bqid) {
+    url = `/api/projects/${pid()}/blockers/${bqid}`;
+  } else {
+    url = `/api/projects/${pid()}/stages/${sid}`;
+  }
   apiPatch(url, body).catch((e) => {
     console.error('patch failed', e);
     alert(`Update failed: ${e.message}`);
@@ -274,13 +293,6 @@ export function confirmAdd() {
 export function toggleStage(id) {
   openStages[id] = !openStages[id];
   renderStages();
-}
-
-export function setStageStatus(id, st) {
-  S.stages.find((x) => x.id === id).status = st;
-  renderStages();
-  apiPatch(`/api/projects/${pid()}/stages/${id}`, { status: st })
-    .catch((e) => console.error('setStageStatus failed', e));
 }
 
 export function deleteStage(id) {
@@ -431,10 +443,7 @@ export function renderStages() {
         </div>
         <div class="stage-ftr">
           <div class="status-btns">
-            ${STAGE_ST.map(
-              (st) =>
-                `<button class="stbtn${s.status === st ? ' ' + STAGE_ST_CLS[st] : ''}" data-stage-status="${s.id}|${st}">${STAGE_ST_LBL[st]}</button>`,
-            ).join('')}
+            ${pillBtn(s, s.id, '', '')}
           </div>
           <button class="btn-ghost" style="color:var(--text-3);font-size:12px" data-del-stage="${s.id}">Delete stage</button>
         </div>
@@ -508,12 +517,6 @@ export function renderStages() {
     const delStageEl = ev.target.closest('[data-del-stage]');
     if (delStageEl) {
       deleteStage(delStageEl.dataset.delStage);
-      return;
-    }
-    const stageStatusEl = ev.target.closest('[data-stage-status]');
-    if (stageStatusEl) {
-      const [sid, st] = stageStatusEl.dataset.stageStatus.split('|');
-      setStageStatus(sid, st);
       return;
     }
     const toggleStageEl = ev.target.closest('[data-toggle-stage]');
