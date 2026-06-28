@@ -107,3 +107,4 @@ See `plan_and_design/04_roadmap.md` for the per-phase acceptance criteria.
 - `documentations/setup.md` — local setup
 - `documentations/user_guide.md` — using the app
 - `documentations/api_reference.md` — REST API reference
+- `documentations/issues.md` — bug/fix log (with `issues/` subdir per entry)
