@@ -5,7 +5,7 @@ entry links to the original issue report and the commit that fixed it.
 
 | Date       | Issue                                          | Fixed in       |
 |------------|------------------------------------------------|----------------|
-| 2026-06-29 | [CSRF 403, layout width, status dropdown, stage status dropdown, auto-derive stage status](issues/20260629.md) | `fb36569`, `88ffcec`, `975b667`, `aa26da0` |
+| 2026-06-29 | [CSRF 403, layout width, status dropdown, stage status dropdown, auto-derive stage status, new derivation priority](issues/20260629.md) | `fb36569`, `88ffcec`, `975b667`, `aa26da0`, `1c5d1cd`, `7f73ec9` |
 
 ## How to add a new entry
 
