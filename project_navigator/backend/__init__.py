@@ -1,0 +1,1 @@
+"""Backend package — Flask app, models, and database helpers."""

@@ -1,0 +1,1 @@
+"""Migrations package — plain SQL files applied at boot."""

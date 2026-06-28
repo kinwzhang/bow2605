@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in — Project Navigator</title>
+<link rel="stylesheet" href="/static/css/login.css">
+</head>
+<body>
+  <main class="login-card">
+    <h1 class="brand">Project Navigator</h1>
+    <p class="tagline" id="mode-tagline">Sign in to your account.</p>
+
+    <form id="auth-form" autocomplete="on">
+      <label>
+        <span>Username</span>
+        <input id="username" name="username" type="text" autocomplete="username"
+          required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.\-]{3,32}" />
+      </label>
+      <label>
+        <span>Password</span>
+        <input id="password" name="password" type="password" autocomplete="current-password"
+          required minlength="6" />
+      </label>
+      <button type="submit" class="btn-primary" id="submit-btn">Sign in</button>
+    </form>
+
+    <p class="error" id="error-msg" hidden></p>
+
+    <p class="toggle">
+      <span id="toggle-text">New here?</span>
+      <button type="button" id="toggle-mode" data-mode="register">Create an account</button>
+    </p>
+  </main>
+
+  <script type="module" src="/static/js/auth.js"></script>
+</body>
+</html>

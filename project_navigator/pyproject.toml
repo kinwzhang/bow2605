@@ -1,0 +1,40 @@
+[project]
+name = "project-navigator"
+version = "0.2.0"
+description = "Multi-user hierarchical planning tool with Flask + SQLite backend."
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "werkzeug>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[tool.coverage.run]
+source = ["backend"]
+omit = ["*/migrations/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[project.scripts]
+pnav-init-db = "scripts.init_db:main"
+
+[tool.pytest.ini_options]
+# Tests live under project_navigator/tests and import the `backend` package.
+# Setting pythonpath here means `pytest` can be run from anywhere.
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]

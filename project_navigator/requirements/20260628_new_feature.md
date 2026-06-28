@@ -1,0 +1,8 @@
+This is a feature requirement for a new feature in the project navigator.
+1. Multiple project support: The system should allow users to create and manage projects, which can have different ultimate goals and stages. Each project should be isolated from others, with its own set of stages, blockers, and sub-items.
+ - 1.1 On the left hand side of current layout, create a project list panel that allows users to navigate or switch across different projects. Each project should have a unique name and an optional description.
+ - 1.2 THe project list panel should allow users to create new projects, delete existing ones, and rename them. When a project is selected, the main content area should display the stages, blockers, and ideas associated with that project.
+ - 1.3 The project list panel should be collapsible to save space, and should remember the last selected project when the user returns to the application.
+
+2. The UI should have the product name: Project Navigator, displayed prominently at the top of the application. The product name should be styled consistently with the overall design aesthetic of the application. When a project is selected, display the project name next to the product name as well.
+3. Multiple user support, allowing different users to have their own set of projects. Each user should be able to log in and access their own projects, with the ability to switch between users if needed. User authentication can be simplified for this prototype, but should be designed with future scalability in mind.

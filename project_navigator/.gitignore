@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtualenv
+.venv/
+venv/
+
+# SQLite databases (runtime + WAL)
+*.db
+*.db-wal
+*.db-shm
+
+# Environment / secrets
+.env
+.env.local
+
+# Editor / OS
+.idea/
+.DS_Store

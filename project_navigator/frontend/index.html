@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Navigator</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<link rel="stylesheet" href="/static/css/header.css">
+<link rel="stylesheet" href="/static/css/sidebar.css">
+</head>
+<body>
+
+<header id="header">
+  <div class="brand">
+    <span class="product">Project Navigator</span>
+    <span class="sep">▸</span>
+    <span class="project-name empty" id="header-project-name">(no project)</span>
+  </div>
+  <div class="user-menu">
+    <button id="user-trigger" class="user-trigger" aria-haspopup="menu">account ▾</button>
+    <div id="user-dropdown" role="menu">
+      <div class="header-line" id="user-name"></div>
+      <button id="switch-user-btn" class="sep">Switch user…</button>
+    </div>
+  </div>
+</header>
+
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <span class="sidebar-title">Projects</span>
+    <button id="collapse-btn" title="Collapse sidebar">‹</button>
+  </div>
+  <button id="sidebar-new-btn">+ New project</button>
+  <div id="sidebar-new-form">
+    <input id="sidebar-new-input" placeholder="Project name…" maxlength="64" />
+    <div class="row">
+      <button id="sidebar-new-confirm" class="btn-primary">Create</button>
+      <button id="sidebar-new-cancel">Cancel</button>
+    </div>
+  </div>
+  <ul id="project-list"></ul>
+  <div id="sidebar-empty" hidden>No projects yet.</div>
+</aside>
+
+<div class="app">
+  <div style="margin-bottom:24px">
+    <div class="lbl">Ultimate goal</div>
+    <div class="goal-bar" id="goalBar" data-edit-goal>
+      <span id="goalDisp" class="ph">Click to set your north star…</span>
+      <span id="goalIcon" style="color:var(--text-3);font-size:13px"></span>
+    </div>
+    <div class="goal-edit" id="goalEdit">
+      <textarea id="goalInput" rows="2" placeholder="State your goal in one clear sentence…"></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" data-save-goal>Save</button>
+        <button data-cancel-goal>Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="lbl" style="margin:0">Stages</div>
+    <button class="btn-primary" data-show-add>+ Add stage</button>
+  </div>
+
+  <div id="stageList"></div>
+
+  <div class="add-stage-card" id="addCard">
+    <div class="lbl">New stage</div>
+    <input id="newName" placeholder="Stage name…" data-new-name />
+    <div class="btn-row">
+      <button class="btn-primary" data-confirm-add>Add</button>
+      <button data-cancel-add>Cancel</button>
+    </div>
+  </div>
+
+  <div class="empty-stages" id="emptyMsg">No stages yet.<br>Add your first stage to get started.</div>
+</div>
+
+<!-- Single portal dropdown, positioned by JS -->
+<div id="portalMenu"></div>
+
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

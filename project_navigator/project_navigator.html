@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Navigator (legacy)</title>
+<style>
+/* ── Legacy banner ───────────────────────────────────────────────── */
+.legacy-banner{position:sticky;top:0;z-index:10000;background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;padding:10px 16px;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.legacy-banner a{color:#92400e;font-weight:600;text-decoration:underline}
+.legacy-banner .close{background:none;border:none;color:#92400e;font-size:18px;cursor:pointer;padding:0 6px;line-height:1}
+</style>
+</head>
+<body>
+<div class="legacy-banner" id="legacyBanner">
+  <span>
+    <strong>This is the legacy single-file version.</strong>
+    The new multi-user app lives at
+    <a href="http://localhost:5000/">http://localhost:5000/</a>
+    (served by Flask at <code>/</code>).
+    See <a href="README.md">README.md</a> for details.
+  </span>
+  <button class="close" onclick="document.getElementById('legacyBanner').remove()" title="Dismiss">×</button>
+</div>
+<script>
+// Restore dismissed state across reloads.
+try {
+  if (localStorage.getItem('pnav5_legacy_banner_dismissed') === '1') {
+    document.getElementById('legacyBanner').remove();
+  }
+} catch (e) {}
+document.getElementById('legacyBanner').querySelector('.close').addEventListener('click', () => {
+  try { localStorage.setItem('pnav5_legacy_banner_dismissed', '1'); } catch (e) {}
+});
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f3;
+  --surface:#ffffff;
+  --surface-hover:#f4f3f0;
+  --border:#e4e2dc;
+  --border-strong:#ccc9c0;
+  --text:#1a1916;
+  --text-2:#6b6860;
+  --text-3:#a09d97;
+  --accent:#2563eb;
+  --accent-bg:#eff4ff;
+  --accent-border:#bfcffd;
+  --red:#dc2626;
+  --red-bg:#fff1f1;
+  --red-border:#fecaca;
+  --amber:#92400e;
+  --amber-bg:#fffbeb;
+  --amber-border:#fde68a;
+  --purple:#6d28d9;
+  --purple-bg:#f5f3ff;
+  --purple-border:#ddd6fe;
+  --green:#15803d;
+  --green-bg:#f0fdf4;
+  --green-border:#bbf7d0;
+  --gray-bg:#f1f5f9;
+  --gray-text:#475569;
+  --r:8px;
+  --rlg:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.app{max-width:760px;margin:0 auto;padding:32px 20px 80px}
+.lbl{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+button{font-family:inherit;cursor:pointer;border-radius:var(--r);font-size:12px;border:0.5px solid var(--border-strong);background:transparent;color:var(--text);padding:5px 11px;transition:background .1s,color .1s}
+button:hover{background:var(--surface-hover)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#1d4ed8}
+.btn-ghost{border-color:transparent;color:var(--text-2);padding:4px 7px}
+.btn-ghost:hover{background:var(--surface-hover);color:var(--text)}
+.btn-del{border:none;background:none;color:var(--text-3);font-size:15px;padding:0 4px;line-height:1}
+.btn-del:hover{color:var(--red);background:none}
+.goal-bar{background:var(--surface);border:0.5px solid var(--accent-border);border-left:3px solid var(--accent);border-radius:var(--r);padding:13px 16px;cursor:text;display:flex;align-items:center;gap:10px}
+.goal-bar:hover{background:var(--accent-bg)}
+.goal-bar span{flex:1;font-size:15px;font-weight:500}
+.goal-bar .ph{color:var(--text-3);font-weight:400;font-size:14px}
+.goal-edit{margin-top:8px;display:none}
+.goal-edit textarea{width:100%;padding:9px 12px;border:0.5px solid var(--border-strong);border-radius:var(--r);font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);resize:none;min-height:60px}
+.goal-edit textarea:focus{outline:none;border-color:var(--accent)}
+.btn-row{display:flex;gap:7px;margin-top:7px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.stage-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--rlg);margin-bottom:10px;overflow:visible}
+.stage-hdr{display:flex;align-items:center;gap:9px;padding:12px 15px;cursor:pointer;user-select:none;border-radius:var(--rlg)}
+.stage-hdr:hover{background:var(--surface-hover)}
+.stage-body{border-top:0.5px solid var(--border);padding:14px 16px}
+.chevron{color:var(--text-3);font-size:11px;transition:transform .15s}
+.chevron.open{transform:rotate(180deg)}
+.subsec{margin-bottom:16px}
+.subsec:last-child{margin-bottom:0}
+.subsec-lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.lbl-block{color:var(--red)}
+.lbl-idea{color:var(--purple)}
+.bq-item{border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:7px;background:var(--bg);overflow:visible}
+.bq-item.deep{border-color:var(--amber-border);background:var(--amber-bg)}
+.bq-hdr{display:flex;align-items:center;gap:7px;padding:8px 10px}
+.bq-toggle{background:none;border:none;color:var(--text-3);font-size:11px;padding:2px 4px;cursor:pointer}
+.bq-toggle:hover{color:var(--text);background:none}
+.bq-text{flex:1;font-size:13px;color:var(--text)}
+.bq-controls{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.spill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:none;cursor:pointer;white-space:nowrap;user-select:none}
+.spill:hover{filter:brightness(.94)}
+.st-todo{background:var(--gray-bg);color:var(--gray-text)}
+.st-active{background:var(--green-bg);color:var(--green)}
+.st-blocked{background:var(--red-bg);color:var(--red)}
+.st-done{background:var(--green-bg);color:var(--green);text-decoration:line-through}
+.st-park{background:var(--amber-bg);color:var(--amber)}
+.st-review{background:var(--accent-bg);color:var(--accent)}
+.st-nice{background:var(--purple-bg);color:var(--purple)}
+.st-solve{background:#fef9c3;color:#713f12}
+.deep-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber-border);white-space:nowrap}
+.sub-items{padding:0 10px 10px 28px}
+.sub-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:12px;color:var(--text)}
+.sub-item:last-child{border-bottom:none}
+.sub-item-text{flex:1}
+.add-sub{display:flex;gap:5px;padding:6px 10px 8px 28px}
+.add-sub input{flex:1;padding:5px 9px;border:0.5px solid var(--border-strong);border-radius:var(--r);font-size:12px;font-family:inherit;color:var(--text);background:var(--surface)}
+.add-sub input:focus{outline:none;border-color:var(--accent)}
+.add-row{display:flex;gap:6px;margin-top:8px}
+.add-row input{flex:1;padding:7px 10px;border:0.5px solid var(--border-strong);border-radius:var(--r);font-family:inherit;font-size:13px;color:var(--text);background:var(--bg)}
+.add-row input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.idea-row{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.idea-row:last-child{border-bottom:none}
+.stage-ftr{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:10px;border-top:0.5px solid var(--border)}
+.status-btns{display:flex;gap:5px;flex-wrap:wrap}
+.stbtn{font-size:11px;padding:3px 9px;border-radius:99px;border:0.5px solid var(--border);color:var(--text-2)}
+.stbtn:hover{border-color:var(--border-strong)}
+.stbtn.on-todo{background:var(--gray-bg);color:var(--gray-text);border-color:#94a3b8}
+.stbtn.on-active{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.stbtn.on-blocked{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+.stbtn.on-done{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.add-stage-card{border:0.5px dashed var(--border-strong);border-radius:var(--rlg);padding:14px 16px;margin-bottom:10px;display:none;background:var(--surface)}
+.add-stage-card input{width:100%;padding:8px 12px;border:0.5px solid var(--border-strong);border-radius:var(--r);font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);margin-bottom:8px}
+.add-stage-card input:focus{outline:none;border-color:var(--accent)}
+.hint{font-size:12px;color:var(--text-3);padding:3px 0 5px}
+.empty-stages{text-align:center;padding:48px 20px;color:var(--text-3)}
+.cnt{font-size:11px;padding:1px 6px;border-radius:99px}
+.cnt-b{background:var(--red-bg);color:var(--red)}
+.cnt-i{background:var(--purple-bg);color:var(--purple)}
+
+/* Portal dropdown — rendered at body level, always on top */
+#portalMenu{
+  display:none;
+  position:fixed;
+  z-index:9999;
+  background:var(--surface);
+  border:0.5px solid var(--border-strong);
+  border-radius:var(--r);
+  box-shadow:0 4px 20px rgba(0,0,0,.13);
+  min-width:148px;
+  overflow:hidden;
+  padding:4px 0;
+}
+.pmitem{display:block;width:100%;text-align:left;border:none;border-radius:0;padding:7px 14px;font-size:12px;color:var(--text);background:transparent;cursor:pointer}
+.pmitem:hover{background:var(--surface-hover)}
+.pmitem.sep{border-top:0.5px solid var(--border);margin-top:3px;padding-top:9px;color:var(--amber)}
+.pmitem.sep-back{border-top:0.5px solid var(--border);margin-top:3px;padding-top:9px;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div style="margin-bottom:24px">
+    <div class="lbl">Ultimate goal</div>
+    <div class="goal-bar" id="goalBar" onclick="editGoal()">
+      <span id="goalDisp" class="ph">Click to set your north star…</span>
+      <span id="goalIcon" style="color:var(--text-3);font-size:13px"></span>
+    </div>
+    <div class="goal-edit" id="goalEdit">
+      <textarea id="goalInput" rows="2" placeholder="State your goal in one clear sentence…"></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="saveGoal()">Save</button>
+        <button onclick="cancelGoal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="lbl" style="margin:0">Stages</div>
+    <button class="btn-primary" onclick="showAdd()">+ Add stage</button>
+  </div>
+
+  <div id="stageList"></div>
+
+  <div class="add-stage-card" id="addCard">
+    <div class="lbl">New stage</div>
+    <input id="newName" placeholder="Stage name…"
+      onkeydown="if(event.key==='Enter')confirmAdd();if(event.key==='Escape')cancelAdd()" />
+    <div class="btn-row">
+      <button class="btn-primary" onclick="confirmAdd()">Add</button>
+      <button onclick="cancelAdd()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="empty-stages" id="emptyMsg">No stages yet.<br>Add your first stage to get started.</div>
+</div>
+
+<!-- Single portal dropdown, positioned by JS -->
+<div id="portalMenu"></div>
+
+<script>
+let S = { goal:'', stages:[] };
+let openStages = {};
+let openBQ = {};
+
+/* ── Persist ── */
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function persist(){ try{ localStorage.setItem('pnav5', JSON.stringify(S)); }catch(e){} }
+function load(){
+  try{ const d=localStorage.getItem('pnav5'); if(d) S=JSON.parse(d); }catch(e){}
+  renderGoal(); renderStages();
+}
+
+/* ── Goal ── */
+function editGoal(){
+  document.getElementById('goalEdit').style.display='block';
+  const t=document.getElementById('goalInput');
+  t.value=S.goal; t.focus();
+}
+function saveGoal(){
+  S.goal=document.getElementById('goalInput').value.trim();
+  document.getElementById('goalEdit').style.display='none';
+  persist(); renderGoal();
+}
+function cancelGoal(){ document.getElementById('goalEdit').style.display='none'; }
+function renderGoal(){
+  const d=document.getElementById('goalDisp');
+  const ic=document.getElementById('goalIcon');
+  if(S.goal){ d.textContent=S.goal; d.className=''; ic.textContent='✎'; }
+  else{ d.textContent='Click to set your north star…'; d.className='ph'; ic.textContent=''; }
+}
+
+/* ── Portal dropdown ── */
+const NORM = [{v:'todo',l:'To Do'},{v:'active',l:'Active'},{v:'blocked',l:'Blocked'},{v:'done',l:'Done'}];
+const DEEP = [{v:'park',l:'Park'},{v:'review',l:'Review'},{v:'nice',l:'Nice to have'},{v:'solve',l:'To Solve →normal'}];
+const ST_CLS = {todo:'st-todo',active:'st-active',blocked:'st-blocked',done:'st-done',park:'st-park',review:'st-review',nice:'st-nice',solve:'st-solve'};
+const ST_LBL = {todo:'To Do',active:'Active',blocked:'Blocked',done:'Done',park:'Park',review:'Review',nice:'Nice to have',solve:'To Solve'};
+
+let _menuCtx = null; // {sid, bqid, subid}
+
+function openPortalMenu(e, sid, bqid, subid){
+  e.stopPropagation();
+  const pm = document.getElementById('portalMenu');
+  const item = getItem(sid, bqid, subid);
+  if(!item) return;
+
+  const statuses = item.deep ? DEEP : NORM;
+  let html = statuses.map(s=>
+    `<button class="pmitem" onclick="applyStatus('${s.v}')">${s.l}</button>`
+  ).join('');
+  html += item.deep
+    ? `<button class="pmitem sep-back" onclick="applyDeep(false)">↩ Back to normal</button>`
+    : `<button class="pmitem sep" onclick="applyDeep(true)">⚑ Going too deep?</button>`;
+
+  pm.innerHTML = html;
+  _menuCtx = {sid, bqid:bqid||null, subid:subid||null};
+
+  // Position below the trigger button
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  pm.style.display = 'block';
+  const pmW = pm.offsetWidth;
+  let left = rect.left;
+  if(left + pmW > window.innerWidth - 8) left = window.innerWidth - pmW - 8;
+  pm.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
+  pm.style.left = left + 'px';
+}
+
+function closePortalMenu(){
+  document.getElementById('portalMenu').style.display='none';
+  _menuCtx=null;
+}
+
+document.addEventListener('click', function(e){
+  const pm=document.getElementById('portalMenu');
+  if(pm.style.display==='block' && !pm.contains(e.target)) closePortalMenu();
+});
+
+function applyStatus(val){
+  if(!_menuCtx) return;
+  const {sid,bqid,subid} = _menuCtx;
+  const item = getItem(sid,bqid,subid);
+  if(!item) return;
+  if(val==='solve'){ item.deep=false; item.status='todo'; }
+  else { item.status=val; }
+  closePortalMenu(); persist(); renderStages();
+}
+
+function applyDeep(val){
+  if(!_menuCtx) return;
+  const {sid,bqid,subid} = _menuCtx;
+  const item = getItem(sid,bqid,subid);
+  if(!item) return;
+  item.deep=val;
+  item.status = val ? 'park' : 'todo';
+  closePortalMenu(); persist(); renderStages();
+}
+
+/* ── Item lookup ── */
+function getItem(sid,bqid,subid){
+  const stage=S.stages.find(x=>x.id===sid); if(!stage) return null;
+  if(!bqid) return stage;
+  const bq=stage.blockers.find(x=>x.id===bqid); if(!bq) return null;
+  if(!subid) return bq;
+  return bq.items.find(x=>x.id===subid)||null;
+}
+
+/* ── Blockers / sub-items / ideas ── */
+function addBQ(sid){
+  const inp=document.getElementById('bi-'+sid);
+  const v=inp.value.trim(); if(!v) return;
+  S.stages.find(x=>x.id===sid).blockers.push({id:uid(),text:v,status:'todo',deep:false,items:[]});
+  inp.value=''; persist(); renderStages();
+}
+function delBQ(sid,bqid,e){ e.stopPropagation();
+  const s=S.stages.find(x=>x.id===sid); s.blockers=s.blockers.filter(x=>x.id!==bqid);
+  persist(); renderStages();
+}
+function toggleBQ(sid,bqid){ const k=sid+'_'+bqid; openBQ[k]=!openBQ[k]; renderStages(); }
+
+function addSub(sid,bqid){
+  const inp=document.getElementById('si-'+bqid);
+  const v=inp.value.trim(); if(!v) return;
+  S.stages.find(x=>x.id===sid).blockers.find(x=>x.id===bqid)
+    .items.push({id:uid(),text:v,status:'todo',deep:false});
+  inp.value=''; persist(); renderStages();
+}
+function delSub(sid,bqid,subid){
+  const bq=S.stages.find(x=>x.id===sid).blockers.find(x=>x.id===bqid);
+  bq.items=bq.items.filter(x=>x.id!==subid);
+  persist(); renderStages();
+}
+
+function addIdea(sid){
+  const inp=document.getElementById('ii-'+sid);
+  const v=inp.value.trim(); if(!v) return;
+  S.stages.find(x=>x.id===sid).ideas.push({id:uid(),text:v});
+  inp.value=''; persist(); renderStages();
+}
+function delIdea(sid,iid){
+  const s=S.stages.find(x=>x.id===sid); s.ideas=s.ideas.filter(x=>x.id!==iid);
+  persist(); renderStages();
+}
+
+/* ── Stage CRUD ── */
+function showAdd(){ document.getElementById('addCard').style.display='block'; document.getElementById('newName').focus(); }
+function cancelAdd(){ document.getElementById('addCard').style.display='none'; }
+function confirmAdd(){
+  const v=document.getElementById('newName').value.trim(); if(!v) return;
+  const id=uid();
+  S.stages.push({id,name:v,status:'todo',blockers:[],ideas:[]});
+  openStages[id]=true;
+  document.getElementById('newName').value='';
+  document.getElementById('addCard').style.display='none';
+  persist(); renderStages();
+}
+function toggleStage(id){ openStages[id]=!openStages[id]; renderStages(); }
+function setStageStatus(id,st){ S.stages.find(x=>x.id===id).status=st; persist(); renderStages(); }
+function deleteStage(id){
+  if(!confirm('Delete this stage and all its content?')) return;
+  S.stages=S.stages.filter(x=>x.id!==id); persist(); renderStages();
+}
+
+/* ── Render helpers ── */
+function pillBtn(item, sid, bqid, subid){
+  const cl=ST_CLS[item.status]||'st-todo';
+  const lbl=ST_LBL[item.status]||'To Do';
+  const args=`'${sid}','${bqid||''}','${subid||''}'`;
+  return `<button class="spill ${cl}" onclick="openPortalMenu(event,${args})">${lbl} ▾</button>`;
+}
+
+function renderBQ(s){
+  if(!s.blockers.length) return '<div class="hint">No blockers or questions.</div>';
+  return s.blockers.map(bq=>{
+    const expanded=!!openBQ[s.id+'_'+bq.id];
+    const deepBadge=bq.deep?'<span class="deep-badge">Too deep</span>':'';
+    const subRows=bq.items.map(sub=>`
+      <div class="sub-item">
+        <span class="sub-item-text">${esc(sub.text)}</span>
+        ${sub.deep?'<span class="deep-badge" style="font-size:9px">Too deep</span>':''}
+        ${pillBtn(sub,s.id,bq.id,sub.id)}
+        <button class="btn-del" onclick="delSub('${s.id}','${bq.id}','${sub.id}')">×</button>
+      </div>`).join('');
+    const expandBody=expanded?`
+      <div class="sub-items">${subRows||'<div class="hint" style="font-size:12px">No sub-items.</div>'}</div>
+      <div class="add-sub">
+        <input id="si-${bq.id}" placeholder="Add a sub-item…"
+          onkeydown="if(event.key==='Enter')addSub('${s.id}','${bq.id}')" />
+        <button onclick="addSub('${s.id}','${bq.id}')">Add</button>
+      </div>`:'';
+    return `<div class="bq-item${bq.deep?' deep':''}">
+      <div class="bq-hdr">
+        <button class="bq-toggle" onclick="toggleBQ('${s.id}','${bq.id}')">${expanded?'▾':'▸'}</button>
+        <span class="bq-text">${esc(bq.text)}</span>
+        <div class="bq-controls">
+          ${deepBadge}
+          ${pillBtn(bq,s.id,bq.id,'')}
+          <button class="btn-del" onclick="delBQ('${s.id}','${bq.id}',event)">×</button>
+        </div>
+      </div>
+      ${expandBody}
+    </div>`;
+  }).join('');
+}
+
+function renderIdeas(s){
+  if(!s.ideas.length) return '<div class="hint">No ideas noted yet.</div>';
+  return s.ideas.map(i=>`
+    <div class="idea-row">
+      <span style="flex:1">${esc(i.text)}</span>
+      <button class="btn-del" onclick="delIdea('${s.id}','${i.id}')">×</button>
+    </div>`).join('');
+}
+
+const STAGE_ST=['todo','active','blocked','done'];
+const STAGE_ST_LBL={todo:'To do',active:'Active',blocked:'Blocked',done:'Done'};
+const STAGE_ST_CLS={todo:'on-todo',active:'on-active',blocked:'on-blocked',done:'on-done'};
+
+function renderStages(){
+  const el=document.getElementById('stageList');
+  const empty=document.getElementById('emptyMsg');
+  if(!S.stages.length){ el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  el.innerHTML=S.stages.map((s,idx)=>{
+    const isOpen=!!openStages[s.id];
+    const bCnt=s.blockers.length;
+    const iCnt=(s.ideas||[]).length;
+    const deepCnt=s.blockers.filter(b=>b.deep).length;
+    const stageBadgeCls={todo:'st-todo',active:'st-active',blocked:'st-blocked',done:'st-done'}[s.status];
+    const stageBadgeLbl={todo:'○ To do',active:'● Active',blocked:'⊘ Blocked',done:'✓ Done'}[s.status];
+
+    const body=isOpen?`
+      <div class="stage-body">
+        <div class="subsec">
+          <div class="subsec-lbl lbl-block">⊘ Blockers &amp; questions</div>
+          ${renderBQ(s)}
+          <div class="add-row">
+            <input id="bi-${s.id}" placeholder="Add a blocker or question…"
+              onkeydown="if(event.key==='Enter')addBQ('${s.id}')" />
+            <button onclick="addBQ('${s.id}')">Add</button>
+          </div>
+        </div>
+        <div class="subsec">
+          <div class="subsec-lbl lbl-idea">✦ Ideas &amp; thinking</div>
+          ${renderIdeas(s)}
+          <div class="add-row">
+            <input id="ii-${s.id}" placeholder="Log an idea or thought…"
+              onkeydown="if(event.key==='Enter')addIdea('${s.id}')" />
+            <button onclick="addIdea('${s.id}')">Add</button>
+          </div>
+        </div>
+        <div class="stage-ftr">
+          <div class="status-btns">
+            ${STAGE_ST.map(st=>`<button class="stbtn${s.status===st?' '+STAGE_ST_CLS[st]:''}" onclick="setStageStatus('${s.id}','${st}')">${STAGE_ST_LBL[st]}</button>`).join('')}
+          </div>
+          <button class="btn-ghost" style="color:var(--text-3);font-size:12px" onclick="deleteStage('${s.id}')">Delete stage</button>
+        </div>
+      </div>`:'';
+
+    return `<div class="stage-card">
+      <div class="stage-hdr" onclick="toggleStage('${s.id}')">
+        <span class="stage-num" style="font-size:11px;font-weight:700;color:var(--text-3);min-width:18px">${idx+1}</span>
+        <span class="stage-name" style="flex:1;font-size:14px;font-weight:500">${esc(s.name)}</span>
+        ${bCnt?`<span class="cnt cnt-b">⊘ ${bCnt}</span>`:''}
+        ${deepCnt?`<span class="cnt" style="background:var(--amber-bg);color:var(--amber)">⚑ ${deepCnt}</span>`:''}
+        ${iCnt?`<span class="cnt cnt-i">✦ ${iCnt}</span>`:''}
+        <span class="spill ${stageBadgeCls}" style="pointer-events:none">${stageBadgeLbl}</span>
+        <span class="chevron${isOpen?' open':''}">▾</span>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+}
+
+load();
+</script>
+</body>
+</html>
