@@ -124,7 +124,7 @@ const _msg = {
     'project.select_hint': '+ 新建项目',
 
     'goal.title': '终极目标',
-    'goal.ph': '点击设定您的北极星\u2026',
+    'goal.ph': '描绘你的星辰大海\u2026',
     'goal.input_ph': '用一句话陈述您的目标\u2026',
     'goal.save': '保存',
     'goal.cancel': '取消',
