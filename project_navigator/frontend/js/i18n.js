@@ -23,6 +23,7 @@ const _msg = {
     'sidebar.projects': 'Projects',
     'sidebar.new_project': '+ New project',
     'sidebar.collapse': 'Collapse sidebar',
+    'sidebar.expand': 'Expand sidebar',
     'sidebar.no_projects': 'No projects yet.',
     'sidebar.project_name': 'Project name\u2026',
 
@@ -109,6 +110,7 @@ const _msg = {
     'sidebar.projects': '项目',
     'sidebar.new_project': '+ 新建项目',
     'sidebar.collapse': '收起侧栏',
+    'sidebar.expand': '展开侧栏',
     'sidebar.no_projects': '暂无项目。',
     'sidebar.project_name': '项目名称\u2026',
 

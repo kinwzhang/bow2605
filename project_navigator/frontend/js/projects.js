@@ -27,6 +27,11 @@ function setSidebarCollapsed(flag) {
   if (sb) sb.classList.toggle('collapsed', flag);
   const btn = document.getElementById('sidebar-new-btn');
   if (btn) btn.classList.toggle('collapsed', flag);
+  const collapseBtn = document.getElementById('collapse-btn');
+  if (collapseBtn) {
+    collapseBtn.textContent = flag ? '›' : '‹';
+    collapseBtn.title = flag ? t('sidebar.expand', 'Expand sidebar') : t('sidebar.collapse', 'Collapse sidebar');
+  }
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────
@@ -276,6 +281,12 @@ export function wireHeader() {
       // Re-cache the dropdown HTML so the cached copy reflects the new language.
       const dropdown = document.getElementById('user-dropdown');
       if (dropdown) _dropdownDefaultHTML = dropdown.innerHTML;
+      // Update collapse button title.
+      const collapseBtn = document.getElementById('collapse-btn');
+      if (collapseBtn) {
+        const collapsed = isSidebarCollapsed();
+        collapseBtn.title = collapsed ? t('sidebar.expand', 'Expand sidebar') : t('sidebar.collapse', 'Collapse sidebar');
+      }
       window.dispatchEvent(new CustomEvent('langchange'));
     });
   }
