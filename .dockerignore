@@ -1,0 +1,4 @@
+project_navigator/.venv
+project_navigator/pycache
+project_navigator//__pycache__
+project_navigator//*.pyc

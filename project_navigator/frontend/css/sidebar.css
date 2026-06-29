@@ -66,7 +66,7 @@
   cursor: pointer;
   font-weight: 500;
 }
-#sidebar-new-btn:hover { background: #1d4ed8; }
+#sidebar-new-btn:hover { filter: brightness(1.15); }
 
 #sidebar-new-form {
   display: none;

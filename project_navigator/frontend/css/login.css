@@ -1,4 +1,30 @@
-/* login.css — auth page; mirrors main.css theme variables. */
+/* login.css — auth page; mirrors main.css theme variables.
+ *
+ * Depends on main.css for data-theme / data-mode color variables.
+ * These :root defaults provide a fallback when main.css is not loaded.
+ */
+
+:root{
+  --bg:#eef2ff;
+  --surface:#ffffff;
+  --surface-hover:#e0e7ff;
+  --border:#d0d9f0;
+  --border-strong:#a5b4e0;
+  --text:#111827;
+  --text-2:#4b5563;
+  --text-3:#94a3b8;
+  --accent:#2563eb;
+  --accent-bg:#eef2ff;
+  --accent-border:#bfcffd;
+  --red:#dc2626;
+  --red-bg:#fef2f2;
+  --amber:#92400e;
+  --amber-bg:#fffbeb;
+  --r:8px;
+  --rlg:12px;
+  --card-shadow:0 1px 3px rgba(37,99,235,.06),0 1px 2px rgba(37,99,235,.04);
+  --glow:0 0 0 1px rgba(37,99,235,.12);
+}
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{
