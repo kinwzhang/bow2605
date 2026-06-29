@@ -122,6 +122,14 @@ def verify_credentials(conn: sqlite3.Connection, username: str, password: str) -
     return user
 
 
+def list_users(conn: sqlite3.Connection) -> list[dict]:
+    """Return all registered users (id + username, no passwords)."""
+    rows = conn.execute(
+        "SELECT id, username FROM user ORDER BY username ASC"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def set_active_project(conn: sqlite3.Connection, user_id: int, project_id: Optional[str]) -> None:
     """Update the user's active_project_id. Pass None to clear."""
     conn.execute(
@@ -957,6 +965,7 @@ __all__ = [
     "get_user_by_id",
     "get_user_by_username",
     "verify_credentials",
+    "list_users",
     "set_active_project",
     "create_project",
     "get_project_for_user",

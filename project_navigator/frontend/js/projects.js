@@ -6,7 +6,8 @@ import {
 } from './state.js';
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from './api.js';
 import { renderAll } from './stages.js';
-import { logout } from './auth.js';
+import { logout, listUsers, switchUser } from './auth.js';
+import { apply as applyTheme, currentTheme, currentMode } from './theme.js';
 
 const SIDEBAR_KEY = 'pnav5_sidebar_collapsed';
 
@@ -197,30 +198,121 @@ export function wireSidebar() {
   });
 }
 
+let _dropdownDefaultHTML = '';
+
 export function wireHeader() {
   const trigger = document.getElementById('user-trigger');
   const dropdown = document.getElementById('user-dropdown');
   const nameEl = document.getElementById('user-name');
+  const themeBtn = document.getElementById('theme-toggle-btn');
 
-  function close() { dropdown.classList.remove('open'); }
-  function open() { dropdown.classList.add('open'); }
+  _dropdownDefaultHTML = dropdown.innerHTML;
+
+  function close() {
+    dropdown.classList.remove('open');
+    _resetDropdown();
+  }
 
   if (currentUser) nameEl.textContent = currentUser.username;
   trigger.textContent = `${currentUser ? currentUser.username : 'account'} ▾`;
 
   trigger.addEventListener('click', (ev) => {
     ev.stopPropagation();
-    dropdown.classList.toggle('open');
+    if (dropdown.classList.contains('open')) {
+      close();
+    } else {
+      _resetDropdown();
+      _syncThemeUI();
+      dropdown.classList.add('open');
+    }
   });
   document.addEventListener('click', (ev) => {
     if (!dropdown.contains(ev.target) && ev.target !== trigger) close();
   });
 
-  document.getElementById('switch-user-btn').addEventListener('click', async () => {
-    // "Switch user" = log out and bounce to the login screen.
-    try { await logout(); } catch (_) {}
-    window.location.replace('/login.html');
+  document.getElementById('switch-user-btn').addEventListener('click', _showUserList);
+
+  // ── Theme toggle button (header) ──────────────────────────────────────
+  themeBtn.addEventListener('click', () => {
+    const next = currentMode === 'light' ? 'dark' : 'light';
+    applyTheme(currentTheme, next);
   });
+
+  // ── Theme swatches (dropdown) ────────────────────────────────────────
+  dropdown.querySelectorAll('.theme-swatch').forEach(el => {
+    el.addEventListener('click', () => {
+      applyTheme(el.dataset.theme, currentMode);
+    });
+  });
+
+  // ── Theme mode buttons (dropdown) ─────────────────────────────────────
+  dropdown.querySelectorAll('.theme-mode-btn').forEach(el => {
+    el.addEventListener('click', () => {
+      applyTheme(currentTheme, el.dataset.mode);
+    });
+  });
+
+  // ── Sync theme UI on change ───────────────────────────────────────────
+  window.addEventListener('themechange', _syncThemeUI);
+
+  _syncThemeUI();
+}
+
+function _syncThemeUI() {
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  if (themeBtn) themeBtn.textContent = currentMode === 'light' ? '☀' : '☾';
+
+  const dropdown = document.getElementById('user-dropdown');
+  if (!dropdown) return;
+
+  dropdown.querySelectorAll('.theme-swatch').forEach(el => {
+    el.classList.toggle('active', el.dataset.theme === currentTheme);
+  });
+  dropdown.querySelectorAll('.theme-mode-btn').forEach(el => {
+    el.classList.toggle('active', el.dataset.mode === currentMode);
+  });
+}
+
+function _resetDropdown() {
+  const dropdown = document.getElementById('user-dropdown');
+  if (!dropdown) return;
+  if (dropdown.classList.contains('switching')) {
+    dropdown.innerHTML = _dropdownDefaultHTML;
+    dropdown.classList.remove('switching');
+    document.getElementById('switch-user-btn').addEventListener('click', _showUserList);
+  }
+}
+
+async function _showUserList() {
+  let users;
+  try { users = await listUsers(); } catch (_) { return; }
+  users = users.filter(u => u.id !== (currentUser && currentUser.id));
+
+  const dropdown = document.getElementById('user-dropdown');
+  dropdown.innerHTML = `
+    <div class="header-line">Switch to…</div>
+    <div class="user-switch-list">
+      ${users.map(u => `<button class="user-switch-item" data-uid="${u.id}">${_esc(u.username)}</button>`).join('')}
+    </div>
+    <button class="sep user-switch-back">← Back</button>
+  `;
+  dropdown.classList.add('switching');
+
+  dropdown.querySelector('.user-switch-list').addEventListener('click', async (ev) => {
+    const el = ev.target.closest('.user-switch-item');
+    if (!el) return;
+    const uid = parseInt(el.dataset.uid, 10);
+    el.disabled = true;
+    try {
+      await switchUser(uid);
+      window.location.reload();
+    } catch (e) {
+      alert(`Switch failed: ${e.message}`);
+      _resetDropdown();
+    }
+  });
+
+  dropdown.querySelector('.user-switch-back').addEventListener('click', _resetDropdown);
 }
 
 export async function signOut() {

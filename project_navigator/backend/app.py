@@ -112,6 +112,29 @@ def create_app(config_class: Optional[Type] = None) -> Flask:
         logout_user()
         return ("", 204)
 
+    @app.get("/api/auth/users")
+    @login_required
+    def list_users():
+        users = models.list_users(g._pnav_db)
+        return jsonify({"users": users}), 200
+
+    @app.post("/api/auth/switch")
+    @login_required
+    @require_csrf
+    def switch_user():
+        body = request.get_json(silent=True) or {}
+        target_id = body.get("user_id")
+        if not isinstance(target_id, int):
+            return jsonify({"error": "user_id must be an integer", "code": "validation"}), 400
+        target = models.get_user_by_id(g._pnav_db, target_id)
+        if target is None:
+            return jsonify({"error": "user not found", "code": "not_found"}), 404
+        csrf = login_user(target["id"])
+        return jsonify({
+            "user": target,
+            "csrf_token": csrf,
+        }), 200
+
     @app.get("/api/auth/me")
     def me():
         user_id = _session_user_id()

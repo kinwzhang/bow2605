@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Navigator</title>
-<link rel="stylesheet" href="/static/css/main.css?v=4">
-<link rel="stylesheet" href="/static/css/header.css?v=3">
+<link rel="stylesheet" href="/static/css/main.css?v=5">
+<link rel="stylesheet" href="/static/css/header.css?v=4">
 <link rel="stylesheet" href="/static/css/sidebar.css?v=3">
 </head>
 <body>
@@ -16,11 +16,26 @@
     <span class="sep">▸</span>
     <span class="project-name empty" id="header-project-name">(no project)</span>
   </div>
-  <div class="user-menu">
-    <button id="user-trigger" class="user-trigger" aria-haspopup="menu">account ▾</button>
-    <div id="user-dropdown" role="menu">
-      <div class="header-line" id="user-name"></div>
-      <button id="switch-user-btn" class="sep">Switch user…</button>
+  <div class="header-controls">
+    <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle light/dark">☀</button>
+    <div class="user-menu">
+      <button id="user-trigger" class="user-trigger" aria-haspopup="menu">account ▾</button>
+      <div id="user-dropdown" role="menu">
+        <div class="header-line" id="user-name"></div>
+        <button id="switch-user-btn" class="sep">Switch user…</button>
+        <div class="theme-section">
+          <div class="theme-lbl">Theme</div>
+          <div class="theme-swatches">
+            <button class="theme-swatch" data-theme="blue" title="Blue"></button>
+            <button class="theme-swatch" data-theme="pink" title="Pink"></button>
+            <button class="theme-swatch" data-theme="yellow" title="Yellow"></button>
+          </div>
+          <div class="theme-mode-row">
+            <button class="theme-mode-btn" data-mode="light">☀ Light</button>
+            <button class="theme-mode-btn" data-mode="dark">☾ Dark</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </header>
@@ -85,6 +100,6 @@
 <!-- Single portal dropdown, positioned by JS -->
 <div id="portalMenu"></div>
 
-<script type="module" src="/static/js/app.js?v=3"></script>
+<script type="module" src="/static/js/app.js?v=4"></script>
 </body>
 </html>

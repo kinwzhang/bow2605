@@ -1,4 +1,4 @@
-/* header.css — branded top bar. */
+/* header.css — branded top bar with glass effect and theme picker. */
 
 body {
   display: grid;
@@ -19,12 +19,15 @@ body.sidebar-collapsed {
   align-items: center;
   justify-content: space-between;
   padding: 0 18px;
-  background: var(--surface);
+  background: var(--header-bg);
+  backdrop-filter: blur(var(--header-blur, 12px));
+  -webkit-backdrop-filter: blur(var(--header-blur, 12px));
   border-bottom: 0.5px solid var(--border);
   height: 56px;
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: background .3s;
 }
 
 #header .brand {
@@ -50,6 +53,16 @@ body.sidebar-collapsed {
   font-weight: 400;
 }
 
+/* ── Right-side controls ───────────────────────────────────────────────── */
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── User menu ─────────────────────────────────────────────────────────── */
+
 #header .user-menu {
   position: relative;
 }
@@ -64,8 +77,34 @@ body.sidebar-collapsed {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  transition: background .15s, border-color .15s;
 }
-#header .user-trigger:hover { background: var(--surface-hover); }
+#header .user-trigger:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+
+/* ── Theme toggle button ───────────────────────────────────────────────── */
+
+.theme-toggle-btn {
+  background: none;
+  border: 0.5px solid var(--border);
+  border-radius: 99px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-2);
+  transition: background .15s, border-color .15s, transform .2s;
+}
+.theme-toggle-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  transform: rotate(30deg);
+}
+
+/* ── User dropdown ─────────────────────────────────────────────────────── */
 
 #user-dropdown {
   display: none;
@@ -76,10 +115,12 @@ body.sidebar-collapsed {
   border: 0.5px solid var(--border-strong);
   border-radius: var(--r);
   box-shadow: 0 4px 20px rgba(0,0,0,.13);
-  min-width: 160px;
+  min-width: 180px;
   z-index: 9999;
   overflow: hidden;
   padding: 4px 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 #user-dropdown.open { display: block; }
 #user-dropdown .header-line {
@@ -101,6 +142,7 @@ body.sidebar-collapsed {
   color: var(--text);
   background: transparent;
   cursor: pointer;
+  transition: background .1s;
 }
 #user-dropdown button:hover { background: var(--surface-hover); }
 #user-dropdown button.sep {
@@ -110,7 +152,108 @@ body.sidebar-collapsed {
   color: var(--accent);
 }
 
-/* Main content — keep reading width. */
+/* ── User switch list ──────────────────────────────────────────────────── */
+
+#user-dropdown .user-switch-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+#user-dropdown .user-switch-item {
+  padding-left: 18px;
+  font-size: 12px;
+}
+#user-dropdown .user-switch-item:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+/* ── Theme picker in dropdown ──────────────────────────────────────────── */
+
+.theme-section {
+  border-top: 0.5px solid var(--border);
+  margin-top: 3px;
+  padding: 8px 14px 10px;
+}
+.theme-section .theme-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 7px;
+}
+.theme-swatches {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.theme-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+#user-dropdown .theme-swatch[data-theme="blue"] {
+  background: #2563eb;
+}
+#user-dropdown .theme-swatch[data-theme="pink"] {
+  background: #db2777;
+}
+#user-dropdown .theme-swatch[data-theme="yellow"] {
+  background: #d97706;
+}
+.theme-swatch:hover {
+  transform: scale(1.15);
+}
+.theme-swatch.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+.theme-swatch.active::after {
+  content: "✓";
+  color: #fff;
+  font-weight: 700;
+  font-size: 10px;
+}
+.theme-swatch[data-theme="yellow"].active::after {
+  color: #1a1a1a;
+}
+
+.theme-mode-row {
+  display: flex;
+  gap: 6px;
+}
+.theme-mode-btn {
+  flex: 1;
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 99px;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  text-align: center;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.theme-mode-btn:hover {
+  background: var(--surface-hover);
+}
+.theme-mode-btn.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-border);
+  font-weight: 600;
+}
+
+/* ── Main content ──────────────────────────────────────────────────────── */
+
 .app {
   grid-area: main;
 }

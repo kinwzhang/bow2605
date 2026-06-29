@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign in — Project Navigator</title>
-<link rel="stylesheet" href="/static/css/login.css">
+<link rel="stylesheet" href="/static/css/login.css?v=2">
 </head>
 <body>
   <main class="login-card">
@@ -31,6 +31,16 @@
       <span id="toggle-text">New here?</span>
       <button type="button" id="toggle-mode" data-mode="register">Create an account</button>
     </p>
+
+    <div class="login-theme-row">
+      <button class="login-theme-swatch" data-theme="blue" title="Blue"></button>
+      <button class="login-theme-swatch" data-theme="pink" title="Pink"></button>
+      <button class="login-theme-swatch" data-theme="yellow" title="Yellow"></button>
+    </div>
+    <div class="login-mode-toggle">
+      <button class="login-mode-btn" data-mode="light">☀ Light</button>
+      <button class="login-mode-btn" data-mode="dark">☾ Dark</button>
+    </div>
   </main>
 
   <script type="module" src="/static/js/auth.js"></script>

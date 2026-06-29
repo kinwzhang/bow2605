@@ -1,21 +1,5 @@
-/* login.css — minimal styling for the auth page; matches main.css palette. */
+/* login.css — auth page; mirrors main.css theme variables. */
 
-:root{
-  --bg:#f7f6f3;
-  --surface:#ffffff;
-  --surface-hover:#f4f3f0;
-  --border:#e4e2dc;
-  --border-strong:#ccc9c0;
-  --text:#1a1916;
-  --text-2:#6b6860;
-  --text-3:#a09d97;
-  --accent:#2563eb;
-  --red:#dc2626;
-  --red-bg:#fff1f1;
-  --amber:#92400e;
-  --amber-bg:#fffbeb;
-  --r:8px;
-}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -27,6 +11,7 @@ body{
   display:grid;
   place-items:center;
   padding:24px;
+  transition:background .3s, color .3s;
 }
 .login-card{
   background:var(--surface);
@@ -35,7 +20,8 @@ body{
   padding:32px;
   width:100%;
   max-width:380px;
-  box-shadow:0 1px 3px rgba(0,0,0,.04);
+  box-shadow:var(--card-shadow, 0 1px 3px rgba(0,0,0,.04));
+  transition:background .2s, box-shadow .2s;
 }
 .brand{
   font-size:18px;
@@ -58,8 +44,9 @@ input{
   padding:9px 12px;
   border:0.5px solid var(--border-strong);
   border-radius:var(--r);
+  transition:border-color .15s, box-shadow .15s;
 }
-input:focus{outline:none;border-color:var(--accent)}
+input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow)}
 .btn-primary{
   background:var(--accent);
   color:#fff;
@@ -70,9 +57,10 @@ input:focus{outline:none;border-color:var(--accent)}
   font-weight:500;
   cursor:pointer;
   margin-top:6px;
+  transition:filter .15s;
 }
-.btn-primary:hover{background:#1d4ed8}
-.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;filter:none}
 .error{
   margin-top:14px;
   padding:8px 10px;
@@ -99,4 +87,68 @@ input:focus{outline:none;border-color:var(--accent)}
   padding:0;
   text-decoration:underline;
 }
-.toggle button:hover{color:#1d4ed8}
+.toggle button:hover{filter:brightness(1.2)}
+
+/* ── Login page theme toggle ────────────────────────────────────────────── */
+
+.login-theme-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+.login-theme-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s, border-color .15s;
+}
+.login-theme-swatch[data-theme="blue"] { background: #2563eb; }
+.login-theme-swatch[data-theme="pink"] { background: #db2777; }
+.login-theme-swatch[data-theme="yellow"] { background: #d97706; }
+.login-theme-swatch:hover {
+  transform: scale(1.15);
+}
+.login-theme-swatch.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+.login-theme-swatch.active::after {
+  content: "✓";
+  color: #fff;
+  font-weight: 700;
+  font-size: 10px;
+}
+.login-theme-swatch[data-theme="yellow"].active::after {
+  color: #1a1a1a;
+}
+
+.login-mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.login-mode-btn {
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.login-mode-btn:hover { background: var(--surface-hover); }
+.login-mode-btn.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-border);
+  font-weight: 600;
+}

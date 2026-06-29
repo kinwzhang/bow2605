@@ -1,23 +1,26 @@
-// auth.js — login / register / logout / me, plus session bootstrap.
+// auth.js — login / register / logout / me / switch, plus session bootstrap.
 //
 // Public surface:
 //   bootstrap() — call on app load. Redirects to /login.html if unauthenticated.
 //   login(username, password)
 //   register(username, password)
 //   logout()
-//   switchUser() — alias for logout(); the user picker UI in the header
-//                  will use this in Phase 7.
+//   listUsers() — fetch all registered users
+//   switchUser(userId) — switch to a different user without password
 //
-// All four mutations hit the real /api/auth/* endpoints defined in
+// All mutations hit the real /api/auth/* endpoints defined in
 // backend/app.py. The CSRF token returned in each response is stored in
 // state.csrf so api.js can attach it to subsequent mutating requests.
 
-import { setCsrf, setCurrentUser, setActiveProjectId } from './state.js';
+import { csrf, setCsrf, setCurrentUser, setActiveProjectId } from './state.js';
+import { init as themeInit, apply as applyTheme, currentTheme, currentMode } from './theme.js';
 
 const ME_PATH = '/api/auth/me';
 const LOGIN_PATH = '/api/auth/login';
 const REGISTER_PATH = '/api/auth/register';
 const LOGOUT_PATH = '/api/auth/logout';
+const USERS_PATH = '/api/auth/users';
+const SWITCH_PATH = '/api/auth/switch';
 
 class AuthError extends Error {
   constructor(status, code, message) {
@@ -28,17 +31,25 @@ class AuthError extends Error {
 }
 
 async function jsonRequest(method, path, body) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  if (csrf && method !== 'GET') headers['X-CSRF-Token'] = csrf;
+
   const resp = await fetch(path, {
     method,
     credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   let payload = null;
   try { payload = await resp.json(); } catch (_) { /* empty body */ }
+
+  if (payload && typeof payload.csrf_token === 'string') {
+    setCsrf(payload.csrf_token);
+  }
+
   if (!resp.ok) {
     throw new AuthError(
       resp.status,
@@ -69,6 +80,30 @@ export async function logout(csrfToken) {
   // We don't clear csrf here — the next /me call will issue a fresh one
   // for the next user (or fail with 401 if no user is logged in).
   return csrfToken;
+}
+
+export async function listUsers() {
+  const resp = await fetch(USERS_PATH, {
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (resp.status === 401) {
+    window.location.replace('/login.html');
+    return new Promise(() => {});
+  }
+  const payload = await resp.json();
+  if (!resp.ok) {
+    throw new AuthError(resp.status, payload && payload.code, (payload && payload.error) || 'failed');
+  }
+  return payload.users;
+}
+
+export async function switchUser(userId) {
+  const body = await jsonRequest('POST', SWITCH_PATH, { user_id: userId });
+  setCsrf(body.csrf_token);
+  setCurrentUser(body.user);
+  return body;
 }
 
 export async function bootstrap({ redirectIfUnauth = true } = {}) {
@@ -145,3 +180,28 @@ if (form) {
 
   applyMode();
 }
+
+// ── Theme setup for login page ───────────────────────────────────────────
+themeInit();
+
+const themeSwatches = document.querySelectorAll('.login-theme-swatch');
+themeSwatches.forEach(el => {
+  el.addEventListener('click', () => {
+    const t = el.dataset.theme;
+    applyTheme(t, currentMode);
+  });
+});
+
+const modeBtns = document.querySelectorAll('.login-mode-btn');
+modeBtns.forEach(el => {
+  el.addEventListener('click', () => {
+    applyTheme(currentTheme, el.dataset.mode);
+  });
+});
+
+function syncLoginThemeUI() {
+  themeSwatches.forEach(el => el.classList.toggle('active', el.dataset.theme === currentTheme));
+  modeBtns.forEach(el => el.classList.toggle('active', el.dataset.mode === currentMode));
+}
+syncLoginThemeUI();
+window.addEventListener('themechange', syncLoginThemeUI);
