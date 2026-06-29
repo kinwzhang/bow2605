@@ -96,7 +96,7 @@ def create_user(conn: sqlite3.Connection, username: str, password: str) -> dict:
 
 def get_user_by_id(conn: sqlite3.Connection, user_id: int) -> Optional[dict]:
     row = conn.execute(
-        "SELECT id, username, active_project_id, created_at FROM user WHERE id = ?",
+        "SELECT id, username, active_project_id, theme, mode, created_at FROM user WHERE id = ?",
         (user_id,),
     ).fetchone()
     return dict(row) if row else None
@@ -104,7 +104,7 @@ def get_user_by_id(conn: sqlite3.Connection, user_id: int) -> Optional[dict]:
 
 def get_user_by_username(conn: sqlite3.Connection, username: str) -> Optional[dict]:
     row = conn.execute(
-        "SELECT id, username, password_hash, active_project_id, created_at "
+        "SELECT id, username, password_hash, active_project_id, theme, mode, created_at "
         "FROM user WHERE username = ?",
         (username,),
     ).fetchone()
@@ -137,6 +137,24 @@ def set_active_project(conn: sqlite3.Connection, user_id: int, project_id: Optio
         (project_id, user_id),
     )
     conn.commit()
+
+
+VALID_THEMES = ("blue", "pink", "yellow")
+VALID_MODES = ("light", "dark")
+
+
+def set_user_preferences(conn: sqlite3.Connection, user_id: int, *, theme: str, mode: str) -> dict:
+    """Update a user's theme/mode preferences. Returns the updated user dict."""
+    if theme not in VALID_THEMES:
+        raise ValidationError("validation", f"theme must be one of {VALID_THEMES}")
+    if mode not in VALID_MODES:
+        raise ValidationError("validation", f"mode must be one of {VALID_MODES}")
+    conn.execute(
+        "UPDATE user SET theme = ?, mode = ? WHERE id = ?",
+        (theme, mode, user_id),
+    )
+    conn.commit()
+    return get_user_by_id(conn, user_id)
 
 
 # ── Project CRUD ──────────────────────────────────────────────────────────

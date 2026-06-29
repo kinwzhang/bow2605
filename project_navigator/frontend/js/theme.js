@@ -53,3 +53,9 @@ export function init() {
   const saved = load();
   apply(saved.theme, saved.mode);
 }
+
+export function applyServer(theme, mode) {
+  if (THEMES.includes(theme) && MODES.includes(mode)) {
+    apply(theme, mode);
+  }
+}

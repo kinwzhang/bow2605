@@ -6,7 +6,7 @@ import {
 } from './state.js';
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from './api.js';
 import { renderAll } from './stages.js';
-import { logout, listUsers, switchUser } from './auth.js';
+import { logout, listUsers, switchUser, savePreferences } from './auth.js';
 import { apply as applyTheme, currentTheme, currentMode } from './theme.js';
 import { t, setLang, getLang, applyI18n } from './i18n.js';
 
@@ -263,7 +263,11 @@ export function wireHeader() {
   });
 
   // ── Sync theme UI on change ───────────────────────────────────────────
-  window.addEventListener('themechange', _syncThemeUI);
+  window.addEventListener('themechange', (e) => {
+    _syncThemeUI();
+    const { theme, mode } = e.detail;
+    savePreferences(theme, mode).catch(() => {});
+  });
 
   // ── Language toggle ───────────────────────────────────────────────────
   const langBtn = document.getElementById('lang-btn');

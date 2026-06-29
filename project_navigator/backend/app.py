@@ -157,6 +157,23 @@ def create_app(config_class: Optional[Type] = None) -> Flask:
             "projects": projects,
         }), 200
 
+    @app.put("/api/auth/preferences")
+    @login_required
+    @require_csrf
+    def save_preferences():
+        body = request.get_json(silent=True) or {}
+        user = current_user()
+        try:
+            updated = models.set_user_preferences(
+                g._pnav_db,
+                user["id"],
+                theme=body.get("theme", user.get("theme", "blue")),
+                mode=body.get("mode", user.get("mode", "light")),
+            )
+        except models.ValidationError as exc:
+            return jsonify({"error": exc.message, "code": exc.code}), 400
+        return jsonify({"user": updated}), 200
+
     # ── Project endpoints ────────────────────────────────────────────────
 
     @app.get("/api/projects")

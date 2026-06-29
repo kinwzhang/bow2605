@@ -13,8 +13,10 @@
 // state.csrf so api.js can attach it to subsequent mutating requests.
 
 import { csrf, setCsrf, setCurrentUser, setActiveProjectId } from './state.js';
-import { init as themeInit, apply as applyTheme, currentTheme, currentMode } from './theme.js';
+import { init as themeInit, apply as applyTheme, applyServer as applyServerTheme, currentTheme, currentMode } from './theme.js';
 import { t, setLang, getLang, applyI18n } from './i18n.js';
+
+const PREFERENCES_PATH = '/api/auth/preferences';
 
 const ME_PATH = '/api/auth/me';
 const LOGIN_PATH = '/api/auth/login';
@@ -65,6 +67,7 @@ export async function login(username, password) {
   const body = await jsonRequest('POST', LOGIN_PATH, { username, password });
   setCsrf(body.csrf_token);
   setCurrentUser(body.user);
+  if (body.user && body.user.theme) applyServerTheme(body.user.theme, body.user.mode || 'light');
   return body;
 }
 
@@ -72,7 +75,12 @@ export async function register(username, password) {
   const body = await jsonRequest('POST', REGISTER_PATH, { username, password });
   setCsrf(body.csrf_token);
   setCurrentUser(body.user);
+  if (body.user && body.user.theme) applyServerTheme(body.user.theme, body.user.mode || 'light');
   return body;
+}
+
+export async function savePreferences(theme, mode) {
+  await jsonRequest('PUT', PREFERENCES_PATH, { theme, mode });
 }
 
 export async function logout(csrfToken) {
@@ -104,6 +112,7 @@ export async function switchUser(userId) {
   const body = await jsonRequest('POST', SWITCH_PATH, { user_id: userId });
   setCsrf(body.csrf_token);
   setCurrentUser(body.user);
+  if (body.user && body.user.theme) applyServerTheme(body.user.theme, body.user.mode || 'light');
   return body;
 }
 
@@ -113,6 +122,7 @@ export async function bootstrap({ redirectIfUnauth = true } = {}) {
     setCsrf(body.csrf_token);
     setCurrentUser(body.user);
     setActiveProjectId(body.active_project_id);
+    if (body.user && body.user.theme) applyServerTheme(body.user.theme, body.user.mode || 'light');
     return body;
   } catch (err) {
     if (err.status === 401 && redirectIfUnauth) {
