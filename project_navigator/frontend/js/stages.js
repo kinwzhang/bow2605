@@ -328,9 +328,9 @@ function _uid() {
 // ── Stage status auto-derivation ──────────────────────────────────────────
 // Mirrors backend.models.derive_stage_status. Stage status is a rollup of
 // its blockers + sub-items, with priority:
-//   active > blocked > review > parked > done > nice
-// Items in 'todo' or 'solve' are neutral; if nothing matches the priority
-// list, the stage falls back to 'active'.
+//   todo > active > blocked > review > parked > done > nice
+// `todo` wins because if any item hasn't started, the whole stage is
+// still in planning. `solve` is neutral; the fallback is `active`.
 // Called after every blocker/sub-item mutation. Re-render reads stage.status,
 // so the header badge and any downstream UI update automatically.
 
@@ -349,7 +349,7 @@ function deriveStageStatus(stage) {
       return candidate;
     }
   }
-  return 'active'; // fallback for all-todo / all-solve / mixed-neutral
+  return 'active'; // fallback for all-solve / mixed-neutral
 }
 
 function reconcileStageStatus(stage) {

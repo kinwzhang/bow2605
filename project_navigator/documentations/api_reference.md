@@ -156,20 +156,27 @@ Once a stage has any blockers or sub-items, its `status` field is
 **auto-derived** from the rollup of its items, with **priority order**
 (first match wins):
 
-`active` > `blocked` > `review` > `park` > (all `done`) > `nice`
+`todo` > `active` > `blocked` > `review` > `park` > (all `done`) > `nice`
 
 | Priority | Condition                                       | Stage status |
 |---------:|-------------------------------------------------|--------------|
-| 1 (top)  | Any item is active                                | `active`     |
-| 2        | Any item is blocked                              | `blocked`    |
-| 3        | Any item is review                                | `review`     |
-| 4        | Any item is park — display label: Parked         | `park`       |
-| 5        | All items are done                                | `done`       |
-| 6        | Any item is nice — display label: Nice to have   | `nice`       |
-| (fallback) | All items are todo, solve, or mixed-neutral    | `active`     |
+| 1 (top)  | Any item is todo                                  | `todo`       |
+| 2        | Any item is active                                | `active`     |
+| 3        | Any item is blocked                              | `blocked`    |
+| 4        | Any item is review                                | `review`     |
+| 5        | Any item is park — display label: Parked         | `park`       |
+| 6        | All items are done                                | `done`       |
+| 7        | Any item is nice — display label: Nice to have   | `nice`       |
+| (fallback) | All items are solve (neutral)                   | `active`     |
 
-Items in `todo` or `solve` are **neutral** — they do not trigger any
-priority. The fallback kicks in only when no item matches the list.
+`todo` wins because if any blocker or sub-item has not started, the
+stage as a whole is still in planning — even if other items are deep
+into `active` or `done`.
+
+Items in `solve` are **neutral** — the deep-coupling rule converts them
+to `todo` on patch, so an "all solve" state in the DB becomes "all todo"
+in practice. The fallback only triggers for synthetic states the
+backend cannot currently produce.
 
 The seven stage statuses are `todo`, `active`, `blocked`, `done`, `park`,
 `review`, `nice` (see `STAGE_STATUSES` in `backend/database.py`).

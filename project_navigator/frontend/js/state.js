@@ -46,9 +46,11 @@ export const STAGE_STATUSES = ['todo', 'active', 'blocked', 'done', 'park', 'rev
 export const ITEM_STATUSES = ['todo', 'active', 'blocked', 'done', 'park', 'review', 'nice', 'solve'];
 
 // Priority order for the stage status rollup (top wins). Must match
-// backend.models.STAGE_DERIVE_PRIORITY. Items in 'todo' or 'solve' are
-// neutral and do not trigger any priority.
-export const STAGE_DERIVE_PRIORITY = ['active', 'blocked', 'review', 'park', 'done', 'nice'];
+// backend.models.STAGE_DERIVE_PRIORITY.
+// `todo` is the highest priority: if any item hasn't started, the stage
+// is still in the planning phase. `solve` is neutral and does not trigger
+// any priority.
+export const STAGE_DERIVE_PRIORITY = ['todo', 'active', 'blocked', 'review', 'park', 'done', 'nice'];
 
 export const ST_CLS = {
   todo: 'st-todo', active: 'st-active', blocked: 'st-blocked', done: 'st-done',

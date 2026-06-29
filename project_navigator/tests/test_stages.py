@@ -486,6 +486,100 @@ def test_stage_priority_all_done_wins_over_nice(client):
     assert snap["stages"][0]["status"] == "done"
 
 
+def test_stage_priority_todo_wins_over_active(client):
+    """Round 6: 'todo' is the highest priority. Even one 'todo' item drops
+    the stage to 'todo' regardless of any other items."""
+    csrf = _setup_with_blocker(client)
+    # b1 default 'todo'. Add another blocker as 'active'.
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "active item", "status": "active"},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "todo"
+
+
+def test_stage_priority_todo_wins_over_everything(client):
+    """One 'todo' item beats blocked / review / parked / done / nice / active."""
+    csrf = _setup_with_blocker(client)
+    # Add blockers covering every non-todo priority.
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "active", "status": "active"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b3", "text": "blocked", "status": "blocked"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b4", "text": "review", "status": "review"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b5", "text": "parked", "deep": True},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b6", "text": "done", "status": "done"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b7", "text": "nice", "status": "nice"},
+                headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "todo"
+
+
+def test_stage_priority_todo_loses_only_when_all_items_started(client):
+    """Once every item has left 'todo' (active, blocked, …), the next
+    priority in the list takes over."""
+    csrf = _setup_with_blocker(client)
+    # Move b1 from 'todo' to 'active'.
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "active"},
+                 headers={"X-CSRF-Token": csrf})
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["status"] == "active"
+
+
+def test_stage_priority_todo_beats_done(client):
+    """Even when every other item is 'done', one 'todo' item drops the stage to 'todo'."""
+    csrf = _setup_with_blocker(client)
+    # Add a done blocker.
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b2", "text": "all done", "status": "done"},
+                headers={"X-CSRF-Token": csrf})
+    # b1 stays default 'todo'.
+
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    # Round 5 rule (todo at top): even with [done, todo], todo wins.
+    assert snap["stages"][0]["status"] == "todo"
+
+
+def test_stage_status_solve_resets_to_todo_on_patch(client):
+    """PATCHing status='solve' applies the deep-coupling rule (solve → todo,
+    deep=false), so the item becomes a regular todo that triggers the
+    todo-priority rule."""
+    csrf = _setup_with_blocker(client)
+    # Set b1 to deep mode first.
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"deep": True},
+                 headers={"X-CSRF-Token": csrf})
+    # Now PATCH status='solve' — backend converts to status='todo', deep=false.
+    csrf = _csrf_after(client)
+    client.patch("/api/projects/p1/blockers/b1",
+                 json={"status": "solve"},
+                 headers={"X-CSRF-Token": csrf})
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    # Status is now 'todo' → stage = 'todo' (priority 1).
+    assert snap["stages"][0]["status"] == "todo"
+
+
 def test_stage_status_auto_derives_to_parked_when_any_item_parked(client):
     csrf = _setup_with_blocker(client)
     client.patch("/api/projects/p1/blockers/b1",
@@ -499,10 +593,11 @@ def test_stage_status_auto_derives_to_parked_when_any_item_parked(client):
 
 
 def test_stage_status_auto_derives_to_active_for_mixed_normal(client):
+    """Round 5 rule (pre-todo-top): only blocker is 'todo' → stage = 'todo'."""
     csrf = _setup_with_blocker(client)
-    # b1 stays 'todo' → stage should be 'active'
+    # b1 stays 'todo' (the default). Round 6: 'todo' wins at the top.
     snap = client.get("/api/projects/p1/snapshot").get_json()
-    assert snap["stages"][0]["status"] == "active"
+    assert snap["stages"][0]["status"] == "todo"
 
 
 def test_stage_status_recompute_on_sub_item_change(client):
@@ -527,13 +622,14 @@ def test_stage_status_recompute_on_sub_item_change(client):
 
 def test_stage_status_recompute_on_blocker_delete(client):
     csrf = _setup_with_blocker(client, stage_status="active")
-    # Delete the only blocker → no items → stage keeps the user-set 'active'.
+    # Round 6: a default blocker is 'todo' → derivation sets stage to 'todo'
+    # at create time. Delete the only blocker → no items → no derivation
+    # → stage stays as the last derived value ('todo').
     csrf = _csrf_after(client)
     client.delete("/api/projects/p1/blockers/b1",
                   headers={"X-CSRF-Token": csrf})
     snap = client.get("/api/projects/p1/snapshot").get_json()
-    # No items → derivation returns None → status stays 'active' (set by user).
-    assert snap["stages"][0]["status"] == "active"
+    assert snap["stages"][0]["status"] == "todo"
 
 
 def test_stage_patch_status_rejected_when_items_exist(client):

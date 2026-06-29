@@ -268,12 +268,16 @@ DEEP_STATUSES = frozenset({"park", "review", "nice", "solve"})
 
 # Priority order for stage status rollup (top wins):
 #
-#     active > blocked > review > parked > done > nice
+#     todo > active > blocked > review > parked > done > nice
 #
-# Items in `todo` or `solve` are neutral — they do not trigger any priority.
-# If no priority matches (e.g. all items are `todo`/`solve`), the stage
-# defaults to `active` to indicate work is pending.
-STAGE_DERIVE_PRIORITY = ("active", "blocked", "review", "park", "done", "nice")
+# `todo` is the highest priority because if any blocker / sub-item hasn't
+# been started, the stage as a whole is still in the planning phase —
+# even if other items are deep into active or done.
+#
+# `solve` is neutral — it does not trigger any priority. If all items are
+# `solve` (or any other mix that doesn't trigger), the stage defaults to
+# `active` to indicate work is pending.
+STAGE_DERIVE_PRIORITY = ("todo", "active", "blocked", "review", "park", "done", "nice")
 
 
 def derive_stage_status(conn: sqlite3.Connection, stage_id: str) -> Optional[str]:
