@@ -8,6 +8,7 @@ import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from './api.js';
 import { renderAll } from './stages.js';
 import { logout, listUsers, switchUser } from './auth.js';
 import { apply as applyTheme, currentTheme, currentMode } from './theme.js';
+import { t, setLang, getLang, applyI18n } from './i18n.js';
 
 const SIDEBAR_KEY = 'pnav5_sidebar_collapsed';
 
@@ -24,6 +25,8 @@ function setSidebarCollapsed(flag) {
   document.body.classList.toggle('sidebar-collapsed', flag);
   const sb = document.getElementById('sidebar');
   if (sb) sb.classList.toggle('collapsed', flag);
+  const btn = document.getElementById('sidebar-new-btn');
+  if (btn) btn.classList.toggle('collapsed', flag);
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────
@@ -119,7 +122,7 @@ export function updateBreadcrumb() {
     el.textContent = currentProject.name;
     el.classList.remove('empty');
   } else {
-    el.textContent = '(no project)';
+    el.textContent = t('project.none', '(no project)');
     el.classList.add('empty');
   }
 }
@@ -174,14 +177,16 @@ export function wireSidebar() {
       ev.stopPropagation();
       if (action.dataset.action === 'rename') {
         const current = _projects.find((p) => p.id === pid);
-        const next = window.prompt('Rename project', current ? current.name : '');
+        const currentName = current ? current.name : '';
+        const next = window.prompt(t('project.rename', 'Rename project'), currentName);
         if (next && next.trim()) {
           try { await renameProject(pid, next.trim()); }
           catch (e) { alert(`Rename failed: ${e.message}`); }
         }
       } else if (action.dataset.action === 'delete') {
         const current = _projects.find((p) => p.id === pid);
-        if (!confirm(`Delete project "${current ? current.name : pid}" and all its content?`)) return;
+        const msg = t('project.delete_confirm', 'Delete project "{name}" and all its content?').replace('{name}', current ? current.name : pid);
+        if (!confirm(msg)) return;
         try { await deleteProject(pid); }
         catch (e) { alert(`Delete failed: ${e.message}`); }
       }
@@ -255,6 +260,26 @@ export function wireHeader() {
   // ── Sync theme UI on change ───────────────────────────────────────────
   window.addEventListener('themechange', _syncThemeUI);
 
+  // ── Language toggle ───────────────────────────────────────────────────
+  const langBtn = document.getElementById('lang-btn');
+  if (langBtn) {
+    langBtn.textContent = getLang() === 'zh-CN' ? 'EN' : '中文';
+    langBtn.addEventListener('click', () => {
+      const next = getLang() === 'zh-CN' ? 'en' : 'zh-CN';
+      setLang(next);
+      langBtn.textContent = next === 'zh-CN' ? 'EN' : '中文';
+      applyI18n();
+      const nameEl = document.getElementById('user-name');
+      if (currentUser) nameEl.textContent = currentUser.username;
+      document.getElementById('switch-user-btn').textContent = t('user.switch', 'Switch user\u2026');
+      _syncThemeUI();
+      // Re-cache the dropdown HTML so the cached copy reflects the new language.
+      const dropdown = document.getElementById('user-dropdown');
+      if (dropdown) _dropdownDefaultHTML = dropdown.innerHTML;
+      window.dispatchEvent(new CustomEvent('langchange'));
+    });
+  }
+
   _syncThemeUI();
 }
 
@@ -279,7 +304,8 @@ function _resetDropdown() {
   if (dropdown.classList.contains('switching')) {
     dropdown.innerHTML = _dropdownDefaultHTML;
     dropdown.classList.remove('switching');
-    document.getElementById('switch-user-btn').addEventListener('click', _showUserList);
+  document.getElementById('switch-user-btn').textContent = t('user.switch', 'Switch user\u2026');
+  document.getElementById('switch-user-btn').addEventListener('click', _showUserList);
   }
 }
 
@@ -290,11 +316,11 @@ async function _showUserList() {
 
   const dropdown = document.getElementById('user-dropdown');
   dropdown.innerHTML = `
-    <div class="header-line">Switch to…</div>
+    <div class="header-line">${t('user.switch_to', 'Switch to\u2026')}</div>
     <div class="user-switch-list">
       ${users.map(u => `<button class="user-switch-item" data-uid="${u.id}">${_esc(u.username)}</button>`).join('')}
     </div>
-    <button class="sep user-switch-back">← Back</button>
+    <button class="sep user-switch-back">${t('user.back', '\u2190 Back')}</button>
   `;
   dropdown.classList.add('switching');
 

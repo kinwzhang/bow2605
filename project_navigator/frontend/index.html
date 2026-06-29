@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Project Navigator</title>
-<link rel="stylesheet" href="/static/css/main.css?v=5">
-<link rel="stylesheet" href="/static/css/header.css?v=4">
-<link rel="stylesheet" href="/static/css/sidebar.css?v=3">
+<title data-i18n="app.title">Project Navigator</title>
+<link rel="stylesheet" href="/static/css/main.css?v=6">
+<link rel="stylesheet" href="/static/css/header.css?v=5">
+<link rel="stylesheet" href="/static/css/sidebar.css?v=4">
 </head>
 <body>
 
 <header id="header">
   <div class="brand">
-    <span class="product">Project Navigator</span>
+    <span class="product" data-i18n="app.title">Project Navigator</span>
     <span class="sep">▸</span>
-    <span class="project-name empty" id="header-project-name">(no project)</span>
+    <span class="project-name empty" id="header-project-name" data-i18n="project.none">(no project)</span>
   </div>
   <div class="header-controls">
     <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle light/dark">☀</button>
@@ -24,15 +24,18 @@
         <div class="header-line" id="user-name"></div>
         <button id="switch-user-btn" class="sep">Switch user…</button>
         <div class="theme-section">
-          <div class="theme-lbl">Theme</div>
+          <div class="theme-lbl" data-i18n="header.theme">Theme</div>
           <div class="theme-swatches">
             <button class="theme-swatch" data-theme="blue" title="Blue"></button>
             <button class="theme-swatch" data-theme="pink" title="Pink"></button>
             <button class="theme-swatch" data-theme="yellow" title="Yellow"></button>
           </div>
           <div class="theme-mode-row">
-            <button class="theme-mode-btn" data-mode="light">☀ Light</button>
-            <button class="theme-mode-btn" data-mode="dark">☾ Dark</button>
+            <button class="theme-mode-btn" data-mode="light" data-i18n="header.light">☀ Light</button>
+            <button class="theme-mode-btn" data-mode="dark" data-i18n="header.dark">☾ Dark</button>
+          </div>
+          <div class="lang-row">
+            <button id="lang-btn" class="lang-btn">中文</button>
           </div>
         </div>
       </div>
@@ -42,64 +45,64 @@
 
 <aside id="sidebar">
   <div id="sidebar-header">
-    <span class="sidebar-title">Projects</span>
-    <button id="collapse-btn" title="Collapse sidebar">‹</button>
+    <span class="sidebar-title" data-i18n="sidebar.projects">Projects</span>
+    <button id="collapse-btn" data-i18n="sidebar.collapse" title="Collapse sidebar">‹</button>
   </div>
-  <button id="sidebar-new-btn">+ New project</button>
+  <button id="sidebar-new-btn"><span class="full-label" data-i18n="sidebar.new_project">+ New project</span><span class="short-label">+</span></button>
   <div id="sidebar-new-form">
-    <input id="sidebar-new-input" placeholder="Project name…" maxlength="64" />
+    <input id="sidebar-new-input" data-i18n-placeholder="sidebar.project_name" placeholder="Project name…" maxlength="64" />
     <div class="row">
-      <button id="sidebar-new-confirm" class="btn-primary">Create</button>
-      <button id="sidebar-new-cancel">Cancel</button>
+      <button id="sidebar-new-confirm" class="btn-primary" data-i18n="project.create">Create</button>
+      <button id="sidebar-new-cancel" data-i18n="project.cancel">Cancel</button>
     </div>
   </div>
   <ul id="project-list"></ul>
-  <div id="sidebar-empty" hidden>No projects yet.</div>
+  <div id="sidebar-empty" data-i18n="sidebar.no_projects" hidden>No projects yet.</div>
 </aside>
 
 <div class="app">
   <div style="margin-bottom:24px">
-    <div class="lbl">Ultimate goal</div>
+    <div class="lbl" data-i18n="goal.title">Ultimate goal</div>
     <div class="goal-bar" id="goalBar" data-edit-goal>
-      <span id="goalDisp" class="ph">Click to set your north star…</span>
+      <span id="goalDisp" class="ph" data-i18n="goal.ph">Click to set your north star…</span>
       <span id="goalIcon" style="color:var(--text-3);font-size:13px"></span>
     </div>
     <div class="goal-edit" id="goalEdit">
-      <textarea id="goalInput" rows="2" placeholder="State your goal in one clear sentence…"></textarea>
+      <textarea id="goalInput" rows="2" data-i18n-placeholder="goal.input_ph" placeholder="State your goal in one clear sentence…"></textarea>
       <div class="btn-row">
-        <button class="btn-primary" data-save-goal>Save</button>
-        <button data-cancel-goal>Cancel</button>
+        <button class="btn-primary" data-save-goal data-i18n="goal.save">Save</button>
+        <button data-cancel-goal data-i18n="goal.cancel">Cancel</button>
       </div>
     </div>
   </div>
 
   <div class="toolbar">
-    <div class="lbl" style="margin:0">Stages</div>
-    <button class="btn-primary" data-show-add>+ Add stage</button>
+    <div class="lbl" style="margin:0" data-i18n="stage.new">Stages</div>
+    <button class="btn-primary" data-show-add data-i18n="stage.add">+ Add stage</button>
   </div>
 
   <div id="noProjectMsg" class="empty-stages" hidden>
-    No project selected. Use the sidebar to
-    <strong data-focus-new>+ New project</strong> or pick an existing one.
+    <span data-i18n="project.no_selected">No project selected. Use the sidebar to</span>
+    <strong data-focus-new data-i18n="project.select_hint">+ New project</strong>
   </div>
 
   <div id="stageList"></div>
 
   <div class="add-stage-card" id="addCard">
-    <div class="lbl">New stage</div>
-    <input id="newName" placeholder="Stage name…" data-new-name />
+    <div class="lbl" data-i18n="stage.new">New stage</div>
+    <input id="newName" data-i18n-placeholder="stage.name_ph" placeholder="Stage name…" data-new-name />
     <div class="btn-row">
-      <button class="btn-primary" data-confirm-add>Add</button>
-      <button data-cancel-add>Cancel</button>
+      <button class="btn-primary" data-confirm-add data-i18n="goal.save">Add</button>
+      <button data-cancel-add data-i18n="goal.cancel">Cancel</button>
     </div>
   </div>
 
-  <div class="empty-stages" id="emptyMsg">No stages yet.<br>Add your first stage to get started.</div>
+  <div class="empty-stages" id="emptyMsg" data-i18n="stage.empty">No stages yet.<br data-i18n="stage.empty_hint" style="display:none">Add your first stage to get started.</div>
 </div>
 
 <!-- Single portal dropdown, positioned by JS -->
 <div id="portalMenu"></div>
 
-<script type="module" src="/static/js/app.js?v=4"></script>
+<script type="module" src="/static/js/app.js?v=5"></script>
 </body>
 </html>

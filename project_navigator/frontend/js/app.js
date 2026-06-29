@@ -6,13 +6,13 @@
 //   3. Load the sidebar (project list + active highlight).
 //   4. Load the active project's snapshot into the main pane.
 
-import {
-  hydrateFromSnapshot, setCurrentProject, setActiveProjectId,
+import { hydrateFromSnapshot, setCurrentProject, setActiveProjectId,
   setCurrentUser, activeProjectId,
 } from './state.js';
 import { renderAll } from './stages.js';
 import { bootstrap as authBootstrap } from './auth.js';
 import { init as themeInit } from './theme.js';
+import { applyI18n } from './i18n.js';
 import {
   loadAndRenderSidebar, loadActiveProject, wireSidebar, wireHeader,
   updateBreadcrumb,
@@ -20,6 +20,7 @@ import {
 
 (async function main() {
   themeInit();
+  applyI18n();
 
   const me = await authBootstrap();
   if (me === null) return; // redirecting to login
@@ -31,3 +32,9 @@ import {
   await loadActiveProject();
   updateBreadcrumb();
 })();
+
+window.addEventListener('langchange', () => {
+  applyI18n();
+  renderAll();
+  updateBreadcrumb();
+});

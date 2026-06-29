@@ -14,6 +14,7 @@
 
 import { csrf, setCsrf, setCurrentUser, setActiveProjectId } from './state.js';
 import { init as themeInit, apply as applyTheme, currentTheme, currentMode } from './theme.js';
+import { t, setLang, getLang, applyI18n } from './i18n.js';
 
 const ME_PATH = '/api/auth/me';
 const LOGIN_PATH = '/api/auth/login';
@@ -135,16 +136,16 @@ if (form) {
 
   function applyMode() {
     if (mode === 'register') {
-      submitBtn.textContent = 'Create account';
-      tagline.textContent = 'Create a new account.';
-      toggleText.textContent = 'Already have an account?';
-      toggleBtn.textContent = 'Sign in instead';
+      submitBtn.textContent = t('auth.register', 'Create account');
+      tagline.textContent = t('auth.register_to', 'Create a new account.');
+      toggleText.textContent = t('auth.already', 'Already have an account?');
+      toggleBtn.textContent = t('auth.signin_instead', 'Sign in instead');
       toggleBtn.dataset.mode = 'login';
     } else {
-      submitBtn.textContent = 'Sign in';
-      tagline.textContent = 'Sign in to your account.';
-      toggleText.textContent = 'New here?';
-      toggleBtn.textContent = 'Create an account';
+      submitBtn.textContent = t('auth.signin', 'Sign in');
+      tagline.textContent = t('auth.signin_to', 'Sign in to your account.');
+      toggleText.textContent = t('auth.new_here', 'New here?');
+      toggleBtn.textContent = t('auth.create', 'Create an account');
       toggleBtn.dataset.mode = 'register';
     }
     errEl.hidden = true;
@@ -171,7 +172,7 @@ if (form) {
       // app shell will show the empty state.
       window.location.replace('/');
     } catch (err) {
-      errEl.textContent = err.message || 'Sign-in failed.';
+      errEl.textContent = err.message || t('auth.failed', 'Sign-in failed.');
       errEl.hidden = false;
     } finally {
       submitBtn.disabled = false;
@@ -205,3 +206,18 @@ function syncLoginThemeUI() {
 }
 syncLoginThemeUI();
 window.addEventListener('themechange', syncLoginThemeUI);
+
+// ── Language toggle (login page) ───────────────────────────────────────────
+const langBtn = document.getElementById('login-lang-btn');
+if (langBtn) {
+  langBtn.textContent = getLang() === 'zh-CN' ? 'EN' : '中文';
+  langBtn.addEventListener('click', () => {
+    const next = getLang() === 'zh-CN' ? 'en' : 'zh-CN';
+    setLang(next);
+    langBtn.textContent = next === 'zh-CN' ? 'EN' : '中文';
+    applyI18n();
+    applyMode();
+  });
+}
+
+applyI18n();

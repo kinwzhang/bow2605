@@ -3,34 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign in — Project Navigator</title>
-<link rel="stylesheet" href="/static/css/main.css?v=5">
-<link rel="stylesheet" href="/static/css/login.css?v=3">
+<title data-i18n="auth.signin">Sign in — Project Navigator</title>
+<link rel="stylesheet" href="/static/css/main.css?v=6">
+<link rel="stylesheet" href="/static/css/login.css?v=4">
 </head>
 <body>
   <main class="login-card">
-    <h1 class="brand">Project Navigator</h1>
-    <p class="tagline" id="mode-tagline">Sign in to your account.</p>
+    <h1 class="brand" data-i18n="app.title">Project Navigator</h1>
+    <p class="tagline" id="mode-tagline" data-i18n="auth.signin_to">Sign in to your account.</p>
 
     <form id="auth-form" autocomplete="on">
       <label>
-        <span>Username</span>
+        <span data-i18n="auth.username">Username</span>
         <input id="username" name="username" type="text" autocomplete="username"
           required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.\-]{3,32}" />
       </label>
       <label>
-        <span>Password</span>
+        <span data-i18n="auth.password">Password</span>
         <input id="password" name="password" type="password" autocomplete="current-password"
           required minlength="6" />
       </label>
-      <button type="submit" class="btn-primary" id="submit-btn">Sign in</button>
+      <button type="submit" class="btn-primary" id="submit-btn" data-i18n="auth.signin">Sign in</button>
     </form>
 
     <p class="error" id="error-msg" hidden></p>
 
     <p class="toggle">
-      <span id="toggle-text">New here?</span>
-      <button type="button" id="toggle-mode" data-mode="register">Create an account</button>
+      <span id="toggle-text" data-i18n="auth.new_here">New here?</span>
+      <button type="button" id="toggle-mode" data-mode="register" data-i18n="auth.create">Create an account</button>
     </p>
 
     <div class="login-theme-row">
@@ -39,8 +39,11 @@
       <button class="login-theme-swatch" data-theme="yellow" title="Yellow"></button>
     </div>
     <div class="login-mode-toggle">
-      <button class="login-mode-btn" data-mode="light">☀ Light</button>
-      <button class="login-mode-btn" data-mode="dark">☾ Dark</button>
+      <button class="login-mode-btn" data-mode="light" data-i18n="header.light">☀ Light</button>
+      <button class="login-mode-btn" data-mode="dark" data-i18n="header.dark">☾ Dark</button>
+    </div>
+    <div class="login-lang-row">
+      <button id="login-lang-btn" class="lang-btn">中文</button>
     </div>
   </main>
 

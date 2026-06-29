@@ -4,6 +4,7 @@
 // optimistic: the local S cache is updated, the UI re-renders, then the
 // API call is fired. A failure surfaces via api.js → ApiError → reload.
 
+import { t } from './i18n.js';
 import {
   S, openStages, openBQ, currentProject, activeProjectId,
   ST_CLS, ST_LBL, STAGE_DERIVE_PRIORITY, esc,
@@ -13,16 +14,16 @@ import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from './api.js
 function pid() { return activeProjectId; }
 
 const NORM = [
-  { v: 'todo',    l: 'To Do' },
-  { v: 'active',  l: 'Active' },
-  { v: 'blocked', l: 'Blocked' },
-  { v: 'done',    l: 'Done' },
+  { v: 'todo',    l: () => t('status.todo', 'To Do') },
+  { v: 'active',  l: () => t('status.active', 'Active') },
+  { v: 'blocked', l: () => t('status.blocked', 'Blocked') },
+  { v: 'done',    l: () => t('status.done', 'Done') },
 ];
 const DEEP = [
-  { v: 'park',   l: 'Park' },
-  { v: 'review', l: 'Review' },
-  { v: 'nice',   l: 'Nice to have' },
-  { v: 'solve',  l: 'To Solve →normal' },
+  { v: 'park',   l: () => t('status.park', 'Park') },
+  { v: 'review', l: () => t('status.review', 'Review') },
+  { v: 'nice',   l: () => t('status.nice', 'Nice to have') },
+  { v: 'solve',  l: () => t('status.solve', 'To Solve \u2192normal') },
 ];
 
 let _menuCtx = null; // { sid, bqid, subid }
@@ -62,7 +63,7 @@ export function renderGoal() {
     d.className = '';
     ic.textContent = '✎';
   } else {
-    d.textContent = 'Click to set your north star…';
+    d.textContent = t('goal.ph', 'Click to set your north star\u2026');
     d.className = 'ph';
     ic.textContent = '';
   }
@@ -91,13 +92,13 @@ export function openPortalMenu(btnEl, sid, bqid, subid) {
   const statuses = (!isStage && item.deep) ? DEEP : NORM;
 
   let html = statuses
-    .map((s) => `<button class="pmitem" data-status="${s.v}">${s.l}</button>`)
+    .map((s) => `<button class="pmitem" data-status="${s.v}">${s.l()}</button>`)
     .join('');
 
   if (!isStage) {
     html += item.deep
-      ? `<button class="pmitem sep-back" data-deep="false">↩ Back to normal</button>`
-      : `<button class="pmitem sep" data-deep="true">⚑ Going too deep?</button>`;
+      ? `<button class="pmitem sep-back" data-deep="false">${t('deep.back', '\u21A9 Back to normal')}</button>`
+      : `<button class="pmitem sep" data-deep="true">${t('deep.go', '\u2691 Going too deep?')}</button>`;
   }
 
   pm.innerHTML = html;
@@ -323,7 +324,7 @@ export function toggleStage(id) {
 }
 
 export function deleteStage(id) {
-  if (!confirm('Delete this stage and all its content?')) return;
+  if (!confirm(t('stage.delete_confirm', 'Delete this stage and all its content?'))) return;
   S.stages = S.stages.filter((x) => x.id !== id);
   renderStages();
   apiDelete(`/api/projects/${pid()}/stages/${id}`).catch((e) => {
@@ -341,7 +342,7 @@ function _uid() {
 // have sub-items (whose status is auto-derived from those items).
 function statusBadge(item) {
   const cl = ST_CLS[item.status] || 'st-todo';
-  const lbl = ST_LBL[item.status] || 'To Do';
+  const lbl = t('status.' + item.status, 'To Do');
   return `<span class="spill ${cl}" style="pointer-events:none" title="Auto-derived">${lbl}</span>`;
 }
 
@@ -403,23 +404,23 @@ function reconcileBlockerStatus(blocker) {
 
 function pillBtn(item, sid, bqid, subid) {
   const cl = ST_CLS[item.status] || 'st-todo';
-  const lbl = ST_LBL[item.status] || 'To Do';
+  const lbl = t('status.' + item.status, 'To Do');
   const bqidAttr = bqid || '';
   const subidAttr = subid || '';
   return `<button class="spill ${cl}" data-portal="${sid}|${bqidAttr}|${subidAttr}">${lbl} ▾</button>`;
 }
 
 function renderBQ(s) {
-  if (!s.blockers.length) return '<div class="hint">No blockers or questions.</div>';
+  if (!s.blockers.length) return `<div class="hint">${t('bq.none', 'No blockers or questions.')}</div>`;
   return s.blockers.map((bq) => {
     const expanded = !!openBQ[s.id + '_' + bq.id];
-    const deepBadge = bq.deep ? '<span class="deep-badge">Too deep</span>' : '';
+    const deepBadge = bq.deep ? `<span class="deep-badge">${t('bq.too_deep', 'Too deep')}</span>` : '';
     const subRows = bq.items
       .map(
         (sub) => `
       <div class="sub-item">
         <span class="sub-item-text">${esc(sub.text)}</span>
-        ${sub.deep ? '<span class="deep-badge" style="font-size:9px">Too deep</span>' : ''}
+        ${sub.deep ? `<span class="deep-badge" style="font-size:9px">${t('bq.too_deep', 'Too deep')}</span>` : ''}
         ${pillBtn(sub, s.id, bq.id, sub.id)}
         <button class="btn-del" data-del-sub="${s.id}|${bq.id}|${sub.id}">×</button>
       </div>`,
@@ -433,11 +434,11 @@ function renderBQ(s) {
       : pillBtn(bq, s.id, bq.id, '');
     const expandBody = expanded
       ? `
-      <div class="sub-items">${subRows || '<div class="hint" style="font-size:12px">No sub-items.</div>'}</div>
+      <div class="sub-items">${subRows || `<div class="hint" style="font-size:12px">${t('sub.none', 'No sub-items.')}</div>`}</div>
       <div class="add-sub">
-        <input id="si-${bq.id}" placeholder="Add a sub-item…"
+        <input id="si-${bq.id}" placeholder="${t('sub.ph', 'Add a sub-item\u2026')}"
           data-add-sub-enter="${s.id}|${bq.id}" />
-        <button data-add-sub="${s.id}|${bq.id}">Add</button>
+        <button data-add-sub="${s.id}|${bq.id}">${t('sub.add', 'Add')}</button>
       </div>`
       : '';
     return `<div class="bq-item${bq.deep ? ' deep' : ''}">
@@ -456,7 +457,7 @@ function renderBQ(s) {
 }
 
 function renderIdeas(s) {
-  if (!s.ideas.length) return '<div class="hint">No ideas noted yet.</div>';
+  if (!s.ideas.length) return `<div class="hint">${t('idea.none', 'No ideas noted yet.')}</div>`;
   return s.ideas
     .map(
       (i) => `
@@ -515,36 +516,41 @@ export function renderStages() {
         park: 'st-park', review: 'st-review', nice: 'st-nice',
       }[s.status];
       const stageBadgeLbl = {
-        todo: '○ To do', active: '● Active', blocked: '⊘ Blocked', done: '✓ Done',
-        park: '⚑ Parked', review: '◐ Review', nice: '✦ Nice to have',
+        todo: t('status.to_do', '\u25CB To do'),
+        active: t('status.is_active', '\u25CF Active'),
+        blocked: t('status.is_blocked', '\u2298 Blocked'),
+        done: t('status.is_done', '\u2713 Done'),
+        park: t('status.is_park', '\u2691 Parked'),
+        review: t('status.is_review', '\u25D0 Review'),
+        nice: t('status.is_nice', '\u2726 Nice to have'),
       }[s.status];
 
       const body = isOpen
         ? `
       <div class="stage-body">
         <div class="subsec">
-          <div class="subsec-lbl lbl-block">⊘ Blockers &amp; questions</div>
+          <div class="subsec-lbl lbl-block">${t('bq.header', '\u2298 Blockers & questions')}</div>
           ${renderBQ(s)}
           <div class="add-row">
-            <input id="bi-${s.id}" placeholder="Add a blocker or question…"
+            <input id="bi-${s.id}" placeholder="${t('bq.add_ph', 'Add a blocker or question\u2026')}"
               data-add-bq-enter="${s.id}" />
-            <button data-add-bq="${s.id}">Add</button>
+            <button data-add-bq="${s.id}">${t('bq.add', 'Add')}</button>
           </div>
         </div>
         <div class="subsec">
-          <div class="subsec-lbl lbl-idea">✦ Ideas &amp; thinking</div>
+          <div class="subsec-lbl lbl-idea">${t('idea.header', '\u2726 Ideas & thinking')}</div>
           ${renderIdeas(s)}
           <div class="add-row">
-            <input id="ii-${s.id}" placeholder="Log an idea or thought…"
+            <input id="ii-${s.id}" placeholder="${t('idea.ph', 'Log an idea or thought\u2026')}"
               data-add-idea-enter="${s.id}" />
-            <button data-add-idea="${s.id}">Add</button>
+            <button data-add-idea="${s.id}">${t('idea.add', 'Add')}</button>
           </div>
         </div>
         <div class="stage-ftr">
           <div class="status-btns">
             <span class="spill ${stageBadgeCls}" style="pointer-events:none" title="Auto-derived from blockers and sub-items">${stageBadgeLbl}</span>
           </div>
-          <button class="btn-ghost" style="color:var(--text-3);font-size:12px" data-del-stage="${s.id}">Delete stage</button>
+          <button class="btn-ghost" style="color:var(--text-3);font-size:12px" data-del-stage="${s.id}">${t('stage.delete', 'Delete stage')}</button>
         </div>
       </div>`
         : '';

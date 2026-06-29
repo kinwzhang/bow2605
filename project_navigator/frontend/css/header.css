@@ -252,6 +252,32 @@ body.sidebar-collapsed {
   font-weight: 600;
 }
 
+.lang-row {
+  border-top: 0.5px solid var(--border);
+  margin-top: 6px;
+  padding: 6px 14px 0;
+}
+.lang-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .15s;
+  width: auto;
+}
+.lang-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.login-lang-row {
+  margin-top: 10px;
+  text-align: center;
+}
+
 /* ── Main content ──────────────────────────────────────────────────────── */
 
 .app {
