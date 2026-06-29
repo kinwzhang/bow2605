@@ -114,10 +114,6 @@ body.sidebar-collapsed {
 .app {
   grid-area: main;
 }
-@media (max-width: 1100px) {
-  /* Still wider than the legacy 760px, but capped by viewport. */
-  .app { max-width: 920px; }
-}
 @media (max-width: 720px) {
   body {
     grid-template-columns: 1fr;
@@ -126,5 +122,5 @@ body.sidebar-collapsed {
       "main";
   }
   #sidebar { display: none; }
-  .app { max-width: 100%; padding: 24px 16px 60px; }
+  .app { padding: 24px 16px 60px; }
 }

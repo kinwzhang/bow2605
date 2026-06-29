@@ -85,14 +85,40 @@ Each stage has a *Blockers & questions* subsection. Click `+` on a blocker to
 expand it (sub-items + add input).
 
 - **Set status** via the colored pill (click to open the dropdown).
-  - Non-deep blockers show: `To Do`, `Active`, `Blocked`, `Done` + a
-    separator + `⚑ Going too deep?`.
+  - **Blocker with no sub-items** shows: `To Do`, `Active`, `Blocked`,
+    `Done` + a separator + `⚑ Going too deep?`. The status is
+    user-controlled.
+  - **Blocker with sub-items** shows the auto-derived status as a
+    read-only badge (the same priority rule as the stage — see below).
+    Change sub-item statuses to change the blocker.
 - **"Too deep" mode**: click the pill and choose `⚑ Going too deep?` to switch
   to a deep status palette (`Park`, `Review`, `Nice to have`, `To Solve →normal`).
-  The row gets an amber border + background.
+  The row gets an amber border + background. Available only on blockers
+  without sub-items.
 - **Back to normal**: from a deep pill, choose `↩ Back to normal`.
 - **Solve**: from a deep pill, choose `To Solve →normal` — this both marks
   the blocker as solved (`status='todo'`) and removes the deep flag.
+
+### Blocker status rollup rule
+
+A blocker with sub-items is auto-derived using the same priority order as
+the stage (first-match-wins):
+
+`todo` > `active` > `blocked` > `review` > `park` > (all `done`) > `nice`
+
+| Priority | Condition                          | Blocker status |
+|---------:|------------------------------------|----------------|
+| 1 (top)  | Any sub-item is `todo`             | `todo`         |
+| 2        | Any sub-item is `active`           | `active`       |
+| 3        | Any sub-item is `blocked`          | `blocked`      |
+| 4        | Any sub-item is `review`           | `review`       |
+| 5        | Any sub-item is `park`             | `park`         |
+| 6        | All sub-items are `done`           | `done`         |
+| 7        | Any sub-item is `nice`             | `nice`         |
+| (fallback) | All sub-items are `solve`      | `active`       |
+
+Sub-items without their own children are user-controlled via the
+dropdown. Without sub-items, the blocker status is also user-controlled.
 
 ## Ideas
 

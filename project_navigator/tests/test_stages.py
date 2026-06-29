@@ -580,6 +580,127 @@ def test_stage_status_solve_resets_to_todo_on_patch(client):
     assert snap["stages"][0]["status"] == "todo"
 
 
+# ── Blocker status auto-derivation (mirrors stage) ────────────────────────
+
+
+def _blocker_with_sub(client, blocker_status="todo", sub_status="todo"):
+    """Helper: project + stage + blocker (with one sub-item).
+
+    Returns the final CSRF token after all setup mutations.
+    """
+    csrf = _auth(client)
+    _new_project(client, csrf)
+    client.post("/api/projects/p1/stages",
+                json={"id": "s1", "name": "S", "status": "active"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b1", "text": "X", "status": blocker_status},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/blockers/b1/items",
+                json={"id": "i1", "text": "Y", "status": sub_status},
+                headers={"X-CSRF-Token": csrf})
+    return _csrf_after(client)
+
+
+def test_blocker_status_derives_from_sub_items(client):
+    """Blocker with one 'todo' sub-item derives to 'todo'."""
+    _blocker_with_sub(client, blocker_status="todo", sub_status="todo")
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["blockers"][0]["status"] == "todo"
+
+
+def test_blocker_status_todo_subitem_wins_over_active_blocker(client):
+    """A 'todo' sub-item wins regardless of the blocker's stored status."""
+    _blocker_with_sub(client, blocker_status="active", sub_status="todo")
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["blockers"][0]["status"] == "todo"
+
+
+def test_blocker_status_all_done_subitems(client):
+    """All sub-items done → blocker = 'done'."""
+    _blocker_with_sub(client, blocker_status="todo", sub_status="done")
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["blockers"][0]["status"] == "done"
+
+
+def test_blocker_status_no_subitems_keeps_user_set(client):
+    """Without sub-items, the user-set blocker status is preserved."""
+    csrf = _auth(client)
+    _new_project(client, csrf)
+    client.post("/api/projects/p1/stages",
+                json={"id": "s1", "name": "S"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b1", "text": "X", "status": "active"},
+                headers={"X-CSRF-Token": csrf})
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["blockers"][0]["status"] == "active"
+
+
+def test_blocker_patch_status_rejected_when_subitems_exist(client):
+    """When sub-items exist, manual status PATCH is rejected with 400."""
+    _blocker_with_sub(client, blocker_status="todo", sub_status="todo")
+    csrf = _csrf_after(client)
+    resp = client.patch("/api/projects/p1/blockers/b1",
+                        json={"status": "active"},
+                        headers={"X-CSRF-Token": csrf})
+    assert resp.status_code == 400
+    assert "auto-derived" in resp.get_json()["error"]
+
+
+def test_blocker_patch_status_allowed_when_no_subitems(client):
+    """Without sub-items, manual status PATCH is allowed."""
+    csrf = _auth(client)
+    _new_project(client, csrf)
+    client.post("/api/projects/p1/stages",
+                json={"id": "s1", "name": "S"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/stages/s1/blockers",
+                json={"id": "b1", "text": "X", "status": "active"},
+                headers={"X-CSRF-Token": csrf})
+    csrf = _csrf_after(client)
+    resp = client.patch("/api/projects/p1/blockers/b1",
+                        json={"status": "blocked"},
+                        headers={"X-CSRF-Token": csrf})
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "blocked"
+
+
+def test_blocker_status_recompute_on_subitem_delete(client):
+    """Delete the only sub-item → blocker derivation returns None → keep last."""
+    _blocker_with_sub(client, blocker_status="todo", sub_status="todo")
+    # Add a second sub-item so we can delete one and still have items.
+    csrf = _csrf_after(client)
+    client.post("/api/projects/p1/blockers/b1/items",
+                json={"id": "i2", "text": "Z", "status": "done"},
+                headers={"X-CSRF-Token": csrf})
+    # Both items present: i1=todo, i2=done → blocker='todo'.
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["blockers"][0]["status"] == "todo"
+    # Delete i1 — only i2 (done) remains → blocker='done'.
+    csrf = _csrf_after(client)
+    client.delete("/api/projects/p1/subitems/i1",
+                  headers={"X-CSRF-Token": csrf})
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    assert snap["stages"][0]["blockers"][0]["status"] == "done"
+
+
+def test_blocker_status_recompute_on_subitem_update(client):
+    """Updating the only sub-item re-derives the blocker status."""
+    _blocker_with_sub(client, blocker_status="todo", sub_status="todo")
+    csrf = _csrf_after(client)
+    client.patch("/api/projects/p1/subitems/i1",
+                 json={"status": "active"},
+                 headers={"X-CSRF-Token": csrf})
+    snap = client.get("/api/projects/p1/snapshot").get_json()
+    # Only sub-item is 'active' → blocker = 'active'.
+    assert snap["stages"][0]["blockers"][0]["status"] == "active"
+
+
 def test_stage_status_auto_derives_to_parked_when_any_item_parked(client):
     csrf = _setup_with_blocker(client)
     client.patch("/api/projects/p1/blockers/b1",

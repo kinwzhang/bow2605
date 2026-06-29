@@ -151,8 +151,13 @@ export function applyStatus(val) {
     item.status = val;
   }
   closePortalMenu();
-  // For blocker/sub-item status changes, re-derive the parent stage's
-  // auto-status so the header badge stays in sync.
+  // Re-derive parent statuses up the chain so the badges stay in sync:
+  // sub-item change → parent blocker; blocker change → parent stage.
+  if (subid) {
+    const stage = S.stages.find((x) => x.id === sid);
+    const blocker = stage && stage.blockers.find((b) => b.id === bqid);
+    if (blocker) reconcileBlockerStatus(blocker);
+  }
   if (bqid) {
     const stage = S.stages.find((x) => x.id === sid);
     if (stage) reconcileStageStatus(stage);
@@ -169,6 +174,11 @@ export function applyDeep(val) {
   item.deep = val;
   item.status = val ? 'park' : 'todo';
   closePortalMenu();
+  if (subid) {
+    const stage = S.stages.find((x) => x.id === sid);
+    const blocker = stage && stage.blockers.find((b) => b.id === bqid);
+    if (blocker) reconcileBlockerStatus(blocker);
+  }
   if (bqid) {
     const stage = S.stages.find((x) => x.id === sid);
     if (stage) reconcileStageStatus(stage);
@@ -240,6 +250,7 @@ export function addSub(sid, bqid) {
   const stage = S.stages.find((x) => x.id === sid);
   const bq = stage.blockers.find((x) => x.id === bqid);
   bq.items.push({ id, text: v, status: 'todo', deep: false });
+  reconcileBlockerStatus(bq);
   reconcileStageStatus(stage);
   inp.value = '';
   renderStages();
@@ -252,6 +263,7 @@ export function delSub(sid, bqid, subid) {
   const stage = S.stages.find((x) => x.id === sid);
   const bq = stage.blockers.find((x) => x.id === bqid);
   bq.items = bq.items.filter((x) => x.id !== subid);
+  reconcileBlockerStatus(bq);
   reconcileStageStatus(stage);
   renderStages();
   apiDelete(`/api/projects/${pid()}/subitems/${subid}`).catch((e) => {
@@ -325,6 +337,14 @@ function _uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 }
 
+// Read-only status badge. Used for the stage footer and for blockers that
+// have sub-items (whose status is auto-derived from those items).
+function statusBadge(item) {
+  const cl = ST_CLS[item.status] || 'st-todo';
+  const lbl = ST_LBL[item.status] || 'To Do';
+  return `<span class="spill ${cl}" style="pointer-events:none" title="Auto-derived">${lbl}</span>`;
+}
+
 // ── Stage status auto-derivation ──────────────────────────────────────────
 // Mirrors backend.models.derive_stage_status. Stage status is a rollup of
 // its blockers + sub-items, with priority:
@@ -357,6 +377,30 @@ function reconcileStageStatus(stage) {
   if (derived !== null) stage.status = derived;
 }
 
+// ── Blocker status auto-derivation (mirrors stage) ────────────────────────
+// Same first-match-wins loop over STAGE_DERIVE_PRIORITY, applied to the
+// blocker's sub-items only. When sub-items exist, the blocker status is
+// read-only; without sub-items, the user can still set it via the dropdown.
+
+function deriveBlockerStatus(blocker) {
+  const items = blocker.items || [];
+  if (!items.length) return null;
+  const statuses = items.map((i) => i.status);
+  for (const candidate of STAGE_DERIVE_PRIORITY) {
+    if (candidate === 'done') {
+      if (statuses.every((s) => s === 'done')) return 'done';
+    } else if (statuses.includes(candidate)) {
+      return candidate;
+    }
+  }
+  return 'active';
+}
+
+function reconcileBlockerStatus(blocker) {
+  const derived = deriveBlockerStatus(blocker);
+  if (derived !== null) blocker.status = derived;
+}
+
 function pillBtn(item, sid, bqid, subid) {
   const cl = ST_CLS[item.status] || 'st-todo';
   const lbl = ST_LBL[item.status] || 'To Do';
@@ -381,6 +425,12 @@ function renderBQ(s) {
       </div>`,
       )
       .join('');
+    // When the blocker has sub-items, its status is auto-derived — render
+    // a read-only badge. Without sub-items, the user controls it via the
+    // portal dropdown.
+    const statusPill = (bq.items && bq.items.length > 0)
+      ? statusBadge(bq)
+      : pillBtn(bq, s.id, bq.id, '');
     const expandBody = expanded
       ? `
       <div class="sub-items">${subRows || '<div class="hint" style="font-size:12px">No sub-items.</div>'}</div>
@@ -396,7 +446,7 @@ function renderBQ(s) {
         <span class="bq-text">${esc(bq.text)}</span>
         <div class="bq-controls">
           ${deepBadge}
-          ${pillBtn(bq, s.id, bq.id, '')}
+          ${statusPill}
           <button class="btn-del" data-del-bq="${s.id}|${bq.id}">×</button>
         </div>
       </div>

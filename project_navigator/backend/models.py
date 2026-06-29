@@ -344,6 +344,47 @@ def reconcile_stage_status(conn: sqlite3.Connection, stage_id: str) -> None:
     conn.commit()
 
 
+def derive_blocker_status(conn: sqlite3.Connection, blocker_id: str) -> Optional[str]:
+    """Auto-derive a blocker's status from its sub-items using the same
+    priority list as the stage rollup.
+
+    Returns one of the 8 item statuses or ``None`` if the blocker has no
+    sub-items (caller keeps the user-set status). The same first-match-wins
+    loop over ``STAGE_DERIVE_PRIORITY`` applies.
+    """
+    rows = conn.execute(
+        "SELECT status FROM sub_item WHERE blocker_id = ?",
+        (blocker_id,),
+    ).fetchall()
+    if not rows:
+        return None
+    statuses = [row["status"] for row in rows]
+    for candidate in STAGE_DERIVE_PRIORITY:
+        if candidate == "done":
+            if all(s == "done" for s in statuses):
+                return "done"
+        else:
+            if candidate in statuses:
+                return candidate
+    return "active"  # fallback for all-solve / mixed-neutral
+
+
+def reconcile_blocker_status(conn: sqlite3.Connection, blocker_id: str) -> None:
+    """Recompute and persist the blocker's auto-derived status.
+
+    No-op when the blocker has no sub-items (user-set status stays). Commits
+    so the change survives the request teardown.
+    """
+    derived = derive_blocker_status(conn, blocker_id)
+    if derived is None:
+        return
+    conn.execute(
+        "UPDATE blocker SET status = ? WHERE id = ? AND status != ?",
+        (derived, blocker_id, derived),
+    )
+    conn.commit()
+
+
 def _normalize_status_for_deep(status: str, deep: bool) -> str:
     """Apply the deep↔status coupling rules from ANALYSIS.md §6.5.
 
@@ -539,6 +580,19 @@ def update_blocker(
     deep: Optional[bool] = None,
     position: Optional[int] = None,
 ) -> Optional[dict]:
+    # Status is auto-derived from sub-items once any exist; reject manual
+    # writes in that case so the frontend can't poke a status out of sync.
+    if status is not None:
+        sub_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM sub_item WHERE blocker_id = ?",
+            (blocker_id,),
+        ).fetchone()["c"]
+        if sub_count > 0:
+            raise ValidationError(
+                "validation",
+                "blocker status is auto-derived from its sub-items",
+            )
+
     if text is None and status is None and deep is None and position is None:
         return get_blocker(conn, blocker_id)
 
@@ -638,11 +692,13 @@ def create_sub_item(
         conn.commit()
     except sqlite3.IntegrityError:
         raise DuplicateError("collision", "sub-item id already exists")
-    # Walk up to the stage for status reconciliation.
+    # Walk up to the parent blocker for status reconciliation, then to the
+    # stage. Sub-item mutations affect both.
     row = conn.execute(
         "SELECT stage_id FROM blocker WHERE id = ?", (blocker_id,)
     ).fetchone()
     if row is not None:
+        reconcile_blocker_status(conn, blocker_id)
         reconcile_stage_status(conn, row["stage_id"])
     return get_sub_item(conn, sub_id)
 
@@ -710,20 +766,22 @@ def update_sub_item(
     conn.commit()
     if cur.rowcount == 0:
         return None
-    # Walk up to the stage for status reconciliation.
+    # Walk up to the parent blocker for status reconciliation, then to the
+    # stage. Sub-item mutations affect both.
     item = get_sub_item(conn, sub_id)
     if item is not None:
         row = conn.execute(
             "SELECT stage_id FROM blocker WHERE id = ?", (item["blocker_id"],)
         ).fetchone()
         if row is not None:
+            reconcile_blocker_status(conn, item["blocker_id"])
             reconcile_stage_status(conn, row["stage_id"])
     return item
 
 
 def delete_sub_item(conn: sqlite3.Connection, sub_id: str) -> bool:
     row = conn.execute(
-        "SELECT b.stage_id FROM sub_item si "
+        "SELECT b.stage_id, si.blocker_id FROM sub_item si "
         "JOIN blocker b ON si.blocker_id = b.id WHERE si.id = ?",
         (sub_id,),
     ).fetchone()
@@ -731,6 +789,7 @@ def delete_sub_item(conn: sqlite3.Connection, sub_id: str) -> bool:
         return False
     cur = conn.execute("DELETE FROM sub_item WHERE id = ?", (sub_id,))
     conn.commit()
+    reconcile_blocker_status(conn, row["blocker_id"])
     reconcile_stage_status(conn, row["stage_id"])
     return cur.rowcount > 0
 
@@ -926,4 +985,6 @@ __all__ = [
     "build_snapshot",
     "derive_stage_status",
     "reconcile_stage_status",
+    "derive_blocker_status",
+    "reconcile_blocker_status",
 ]
