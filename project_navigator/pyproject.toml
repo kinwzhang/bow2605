@@ -7,6 +7,7 @@ dependencies = [
     "flask>=3.0",
     "werkzeug>=3.0",
     "gunicorn>=22.0",
+    "mcp>=1.28.1",
 ]
 
 [project.optional-dependencies]
@@ -28,6 +29,7 @@ exclude_lines = [
 
 [project.scripts]
 pnav-init-db = "scripts.init_db:main"
+pnav-mcp = "mcp_server:main"
 
 [tool.pytest.ini_options]
 # Tests live under project_navigator/tests and import the `backend` package.

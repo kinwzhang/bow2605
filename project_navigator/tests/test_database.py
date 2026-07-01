@@ -90,7 +90,7 @@ def test_apply_migrations_creates_all_tables(db_conn: sqlite3.Connection) -> Non
 
 def test_apply_migrations_records_versions(db_conn: sqlite3.Connection) -> None:
     versions = applied_versions(db_conn)
-    assert versions == {1, 2, 3, 4}
+    assert versions == {1, 2, 3, 4, 5}
 
 
 def test_apply_migrations_creates_legacy_user_with_hash(db_conn: sqlite3.Connection) -> None:
@@ -119,7 +119,7 @@ def test_apply_migrations_idempotent(db_conn: sqlite3.Connection) -> None:
     try:
         applied1 = apply_migrations(fresh)
         applied2 = apply_migrations(fresh)
-        assert applied1 == [1, 2, 3, 4]
+        assert applied1 == [1, 2, 3, 4, 5]
         assert applied2 == []
     finally:
         fresh.close()
@@ -199,7 +199,7 @@ def test_migration_002_backfills_existing_data(tmp_path: Path) -> None:
     conn = connect(db)
     try:
         applied = apply_migrations(conn)
-        assert applied == [2, 3, 4]
+        assert applied == [2, 3, 4, 5]
 
         # Existing data should now be reassigned to the default project.
         stages = conn.execute("SELECT id, name, project_id FROM stage").fetchall()

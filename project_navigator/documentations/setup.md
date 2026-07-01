@@ -76,8 +76,23 @@ python -m pytest tests/ -v
 
 All 9 phases complete. 92 tests pass; 82% backend line coverage.
 
+## MCP server
+
+An MCP server exposes the same data to AI agents over stdio or SSE.
+
+```bash
+# Run via stdio (default)
+pnav-mcp
+
+# Run as HTTP server (SSE)
+pnav-mcp --sse
+```
+
+See `mcp_server.md` for the full tool/resource reference.
+
 ## See also
 
 - `../README.md` — project overview
 - `user_guide.md` — how to use the app
 - `api_reference.md` — REST API reference
+- `mcp_server.md` — MCP server reference

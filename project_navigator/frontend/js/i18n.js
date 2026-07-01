@@ -84,6 +84,23 @@ const _msg = {
     'deep.back': '\u21A9 Back to normal',
     'deep.go': '\u2691 Going too deep?',
 
+    'note.add': 'Add note',
+    'note.edit': 'Edit note',
+    'note.save': 'Save note',
+    'note.cancel': 'Cancel',
+    'note.empty': 'No note.',
+    'note.ph': 'Write a note\u2026',
+
+    'edit.save': 'Save',
+    'edit.cancel': 'Cancel',
+    'edit.ph': 'Click to edit',
+
+    'timestamp.status_changed': 'Status changed:',
+    'timestamp.updated': 'Updated:',
+    'timestamp.created': 'Created:',
+
+    'dnd.drag': 'Drag to reorder',
+
     'user.switch': 'Switch user\u2026',
     'user.switch_to': 'Switch to\u2026',
     'user.account': 'account',
@@ -170,6 +187,23 @@ const _msg = {
 
     'deep.back': '↩ 返回普通',
     'deep.go': '⚑ 太深入了？',
+
+    'note.add': '添加备注',
+    'note.edit': '编辑备注',
+    'note.save': '保存备注',
+    'note.cancel': '取消',
+    'note.empty': '暂无备注。',
+    'note.ph': '写下备注\u2026',
+
+    'edit.save': '保存',
+    'edit.cancel': '取消',
+    'edit.ph': '点击编辑',
+
+    'timestamp.status_changed': '状态变更：',
+    'timestamp.updated': '更新于：',
+    'timestamp.created': '创建于：',
+
+    'dnd.drag': '拖拽排序',
 
     'user.switch': '切换用户…',
     'user.switch_to': '切换到…',

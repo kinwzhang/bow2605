@@ -364,6 +364,7 @@ def create_app(config_class: Optional[Type] = None) -> Flask:
                 name=body.get("name"),
                 status=body.get("status"),
                 position=body.get("position"),
+                note=body.get("note"),
             )
         except models.ValidationError as exc:
             return jsonify({"error": exc.message, "code": exc.code}), 400
@@ -423,6 +424,7 @@ def create_app(config_class: Optional[Type] = None) -> Flask:
                 status=body.get("status"),
                 deep=body.get("deep"),
                 position=body.get("position"),
+                note=body.get("note"),
             )
         except models.ValidationError as exc:
             return jsonify({"error": exc.message, "code": exc.code}), 400
@@ -482,6 +484,7 @@ def create_app(config_class: Optional[Type] = None) -> Flask:
                 status=body.get("status"),
                 deep=body.get("deep"),
                 position=body.get("position"),
+                note=body.get("note"),
             )
         except models.ValidationError as exc:
             return jsonify({"error": exc.message, "code": exc.code}), 400
@@ -522,6 +525,28 @@ def create_app(config_class: Optional[Type] = None) -> Flask:
             return jsonify({"error": exc.message, "code": exc.code}), 409
         except models.ValidationError as exc:
             return jsonify({"error": exc.message, "code": exc.code}), 400
+        return jsonify(idea), 200
+
+    @app.patch("/api/projects/<project_id>/ideas/<idea_id>")
+    @login_required
+    @require_csrf
+    def patch_idea(project_id: str, idea_id: str):
+        resolved = _resolve_idea(idea_id)
+        if resolved is None or resolved[0]["id"] != project_id:
+            return jsonify({"error": "not found", "code": "not_found"}), 404
+        body = request.get_json(silent=True) or {}
+        try:
+            idea = models.update_idea(
+                g._pnav_db,
+                idea_id,
+                text=body.get("text"),
+                position=body.get("position"),
+                note=body.get("note"),
+            )
+        except models.ValidationError as exc:
+            return jsonify({"error": exc.message, "code": exc.code}), 400
+        if idea is None:
+            return jsonify({"error": "not found", "code": "not_found"}), 404
         return jsonify(idea), 200
 
     @app.delete("/api/projects/<project_id>/ideas/<idea_id>")

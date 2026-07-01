@@ -75,6 +75,7 @@ project_navigator/
 │       ├── projects.js             ← sidebar logic
 │       └── stages.js               ← render + actions
 │
+├── mcp_server.py                   ← MCP server for AI agent interaction
 ├── tests/                          ← pytest suite
 └── scripts/
     ├── init_db.py                  ← apply migrations to a SQLite database
@@ -107,4 +108,5 @@ See `plan_and_design/04_roadmap.md` for the per-phase acceptance criteria.
 - `documentations/setup.md` — local setup
 - `documentations/user_guide.md` — using the app
 - `documentations/api_reference.md` — REST API reference
+- `documentations/mcp_server.md` — MCP server reference (tools, resources, agent setup)
 - `documentations/issues.md` — bug/fix log (with `issues/` subdir per entry)

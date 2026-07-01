@@ -1,9 +1,3 @@
-// stages.js — render + actions, lifted from the legacy project_navigator.html.
-//
-// Phase 6: every mutation calls the real backend API. Mutations are
-// optimistic: the local S cache is updated, the UI re-renders, then the
-// API call is fired. A failure surfaces via api.js → ApiError → reload.
-
 import { t } from './i18n.js';
 import {
   S, openStages, openBQ, currentProject, activeProjectId,
@@ -26,11 +20,158 @@ const DEEP = [
   { v: 'solve',  l: () => t('status.solve', 'To Solve \u2192normal') },
 ];
 
-let _menuCtx = null; // { sid, bqid, subid }
+let _menuCtx = null;
+let _editCtx = null;
+let _dragSrc = null;
 
-// ── Persistence ───────────────────────────────────────────────────────────
-// Phase 5: no-op. Real backend calls land in Phase 6+.
-function persist() { /* no-op stub */ }
+function _uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+}
+
+function _ts(ts) {
+  if (!ts) return '';
+  const d = new Date(ts + 'Z');
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function _patchUrl(sid, bqid, subid, isIdea) {
+  if (isIdea) return `/api/projects/${pid()}/ideas/${subid}`;
+  if (subid) return `/api/projects/${pid()}/subitems/${subid}`;
+  if (bqid) return `/api/projects/${pid()}/blockers/${bqid}`;
+  return `/api/projects/${pid()}/stages/${sid}`;
+}
+
+function _patch(sid, bqid, subid, body, isIdea) {
+  apiPatch(_patchUrl(sid, bqid, subid, isIdea), body).catch((e) => {
+    console.error('patch failed', e);
+    alert(`Update failed: ${e.message}`);
+  });
+}
+
+function getItem(sid, bqid, subid) {
+  const stage = S.stages.find((x) => x.id === sid);
+  if (!stage) return null;
+  if (!bqid) return stage;
+  const bq = stage.blockers.find((x) => x.id === bqid);
+  if (!bq) return null;
+  if (!subid) return bq;
+  return bq.items.find((x) => x.id === subid) || null;
+}
+
+// ── Inline editing ────────────────────────────────────────────────────────
+
+export function startEdit(el, sid, bqid, subid) {
+  if (_editCtx) return;
+  const item = getItem(sid, bqid, subid);
+  if (!item) return;
+  const field = subid || bqid ? 'text' : 'name';
+  const currentVal = item[field] || '';
+  const inp = document.createElement('input');
+  inp.className = 'inline-edit-input';
+  inp.value = currentVal;
+  inp.dataset.editSid = sid;
+  inp.dataset.editBqid = bqid || '';
+  inp.dataset.editSubid = subid || '';
+  const parent = el.parentNode;
+  el.style.display = 'none';
+  parent.insertBefore(inp, el.nextSibling);
+  inp.focus();
+  inp.select();
+  _editCtx = { sid, bqid, subid, field, el, inp };
+  inp.addEventListener('blur', () => saveEdit());
+}
+
+function cancelEdit() {
+  if (!_editCtx) return;
+  const { el, inp } = _editCtx;
+  inp.remove();
+  el.style.display = '';
+  _editCtx = null;
+}
+
+function saveEdit() {
+  if (!_editCtx) return;
+  const { sid, bqid, subid, field, el, inp } = _editCtx;
+  const val = inp.value.trim();
+  const item = getItem(sid, bqid, subid);
+  inp.remove();
+  el.style.display = '';
+  _editCtx = null;
+  if (!val || val === item[field]) return;
+  item[field] = val;
+  renderStages();
+  _patch(sid, bqid, subid, { [field]: val });
+}
+
+// ── Note toggle/edit ──────────────────────────────────────────────────────
+
+const _openNotes = {};
+
+export function toggleNote(sid, bqid, subid, isIdea) {
+  const key = isIdea ? `idea|${sid}|${subid}` : [sid, bqid || '', subid || ''].join('|');
+  _openNotes[key] = !_openNotes[key];
+  renderStages();
+}
+
+function _getItemForNote(sid, bqid, subid, isIdea) {
+  if (isIdea) {
+    const stage = S.stages.find((x) => x.id === sid);
+    if (!stage) return null;
+    return stage.ideas.find((x) => x.id === subid) || null;
+  }
+  return getItem(sid, bqid, subid);
+}
+
+function _noteKey(sid, bqid, subid, isIdea) {
+  return isIdea ? `idea|${sid}|${subid}` : [sid, bqid || '', subid || ''].join('|');
+}
+
+function renderNote(sid, bqid, subid, isIdea) {
+  const item = _getItemForNote(sid, bqid, subid, isIdea);
+  if (!item) return '';
+  const key = _noteKey(sid, bqid, subid, isIdea);
+  const isOpen = !!_openNotes[key];
+  const note = item.note || '';
+  const typeAttr = isIdea ? 'idea' : (bqid ? (subid ? 'sub' : 'bq') : 'stage');
+  const noteBtn = `<button class="btn-note" data-toggle-note="${sid}|${bqid || ''}|${subid || ''}|${typeAttr}" title="${t('note.edit', 'Edit note')}">${note ? '\u270E' : '+'}</button>`;
+  if (!isOpen) return noteBtn;
+  const noteHtml = `
+    <div class="note-area" data-note-area="${key}">
+      <textarea class="note-input" data-note-text="${sid}|${bqid || ''}|${subid || ''}|${typeAttr}" placeholder="${t('note.ph', 'Write a note\u2026')}">${esc(note)}</textarea>
+      <div class="note-actions">
+        <button class="btn-note-save" data-note-save="${sid}|${bqid || ''}|${subid || ''}|${typeAttr}">${t('note.save', 'Save note')}</button>
+        <button class="btn-note-cancel" data-note-cancel="${key}">${t('note.cancel', 'Cancel')}</button>
+      </div>
+    </div>`;
+  return noteBtn + noteHtml;
+}
+
+function saveNote(sid, bqid, subid, typeAttr) {
+  const isIdea = typeAttr === 'idea';
+  const item = _getItemForNote(sid, bqid, subid, isIdea);
+  if (!item) return;
+  const key = _noteKey(sid, bqid, subid, isIdea);
+  const textarea = document.querySelector(`[data-note-text="${sid}|${bqid || ''}|${subid || ''}|${typeAttr}"]`);
+  if (!textarea) return;
+  const val = textarea.value;
+  item.note = val;
+  _openNotes[key] = false;
+  renderStages();
+  _patch(sid, bqid, subid, { note: val }, isIdea);
+}
+
+function cancelNote(key) {
+  _openNotes[key] = false;
+  renderStages();
+}
+
+// ── Timestamp display ─────────────────────────────────────────────────────
+
+function _tsInline(item) {
+  const ts = item.updated_at || item.status_changed_at || item.created_at;
+  return ts ? `<span class="ts-inline">${_ts(ts)}</span>` : '';
+}
 
 // ── Goal ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +202,7 @@ export function renderGoal() {
   if (S.goal) {
     d.textContent = S.goal;
     d.className = '';
-    ic.textContent = '✎';
+    ic.textContent = '\u270E';
   } else {
     d.textContent = t('goal.ph', 'Click to set your north star\u2026');
     d.className = 'ph';
@@ -71,23 +212,11 @@ export function renderGoal() {
 
 // ── Portal dropdown ───────────────────────────────────────────────────────
 
-function getItem(sid, bqid, subid) {
-  const stage = S.stages.find((x) => x.id === sid);
-  if (!stage) return null;
-  if (!bqid) return stage;
-  const bq = stage.blockers.find((x) => x.id === bqid);
-  if (!bq) return null;
-  if (!subid) return bq;
-  return bq.items.find((x) => x.id === subid) || null;
-}
-
 export function openPortalMenu(btnEl, sid, bqid, subid) {
   const pm = document.getElementById('portalMenu');
   const item = getItem(sid, bqid, subid);
   if (!item) return;
 
-  // Stages have no `deep` mode — they get the 4 normal statuses only and
-  // no "Going too deep?" toggle.
   const isStage = !bqid;
   const statuses = (!isStage && item.deep) ? DEEP : NORM;
 
@@ -111,15 +240,12 @@ export function openPortalMenu(btnEl, sid, bqid, subid) {
     });
   });
 
-  // Position the menu just below the pill that triggered it. The menu is
-  // position:fixed, so coordinates are viewport-relative (no scrollY).
   const rect = btnEl.getBoundingClientRect();
   pm.style.display = 'block';
   const pmW = pm.offsetWidth;
   const pmH = pm.offsetHeight;
   let left = rect.left;
   if (left + pmW > window.innerWidth - 8) left = window.innerWidth - pmW - 8;
-  // Flip upward if there isn't room below the trigger.
   let top = rect.bottom + 4;
   if (top + pmH > window.innerHeight - 8) top = rect.top - pmH - 4;
   pm.style.top = top + 'px';
@@ -142,9 +268,6 @@ export function applyStatus(val) {
   const item = getItem(sid, bqid, subid);
   if (!item) return;
 
-  // 'solve' is only emitted from the deep toggle, which only appears for
-  // blockers / sub-items. For stages (bqid is null), val is always one of
-  // the 4 normal stage statuses.
   if (bqid && val === 'solve') {
     item.deep = false;
     item.status = 'todo';
@@ -152,8 +275,6 @@ export function applyStatus(val) {
     item.status = val;
   }
   closePortalMenu();
-  // Re-derive parent statuses up the chain so the badges stay in sync:
-  // sub-item change → parent blocker; blocker change → parent stage.
   if (subid) {
     const stage = S.stages.find((x) => x.id === sid);
     const blocker = stage && stage.blockers.find((b) => b.id === bqid);
@@ -189,22 +310,93 @@ export function applyDeep(val) {
 }
 
 function _patchItemStatus(sid, bqid, subid, body) {
-  // Routes:
-  //   subid set → /subitems/<subid>
-  //   bqid set  → /blockers/<bqid>
-  //   neither   → /stages/<sid>  (stage-level status change)
-  let url;
-  if (subid) {
-    url = `/api/projects/${pid()}/subitems/${subid}`;
-  } else if (bqid) {
-    url = `/api/projects/${pid()}/blockers/${bqid}`;
-  } else {
-    url = `/api/projects/${pid()}/stages/${sid}`;
+  _patch(sid, bqid, subid, body);
+}
+
+// ── Drag and Drop ─────────────────────────────────────────────────────────
+
+function handleDragStart(e) {
+  const el = e.target.closest('[data-draggable]');
+  if (!el) return;
+  _dragSrc = el.dataset.draggable;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', _dragSrc);
+  el.classList.add('dragging');
+}
+
+function handleDragOver(e) {
+  const el = e.target.closest('[data-draggable]');
+  if (!el || !_dragSrc) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.drag-over').forEach((x) => x.classList.remove('drag-over'));
+  el.classList.add('drag-over');
+}
+
+function handleDragEnd(e) {
+  document.querySelectorAll('.dragging, .drag-over').forEach((x) => x.classList.remove('dragging', 'drag-over'));
+  _dragSrc = null;
+}
+
+function handleDrop(e) {
+  const target = e.target.closest('[data-draggable]');
+  if (!target || !_dragSrc) return;
+  e.preventDefault();
+  const srcType = _dragSrc.split('|')[0];
+  const tgtType = target.dataset.draggable.split('|')[0];
+  if (srcType !== tgtType) return;
+
+  const srcParts = _dragSrc.split('|');
+  const tgtParts = target.dataset.draggable.split('|');
+
+  if (srcType === 'stage') {
+    const srcIdx = S.stages.findIndex((s) => s.id === srcParts[1]);
+    const tgtIdx = S.stages.findIndex((s) => s.id === tgtParts[1]);
+    if (srcIdx < 0 || tgtIdx < 0 || srcIdx === tgtIdx) return;
+    const [stage] = S.stages.splice(srcIdx, 1);
+    S.stages.splice(tgtIdx, 0, stage);
+    renderStages();
+    S.stages.forEach((s, i) => {
+      if (s.position !== i) {
+        s.position = i;
+        _patch(s.id, null, null, { position: i });
+      }
+    });
+  } else if (srcType === 'blocker') {
+    const stage = S.stages.find((s) => s.id === srcParts[1]);
+    const tgtStage = S.stages.find((s) => s.id === tgtParts[1]);
+    if (!stage || !tgtStage || srcParts[1] !== tgtParts[1]) return;
+    const srcIdx = stage.blockers.findIndex((b) => b.id === srcParts[2]);
+    const tgtIdx = tgtStage.blockers.findIndex((b) => b.id === tgtParts[2]);
+    if (srcIdx < 0 || tgtIdx < 0 || srcIdx === tgtIdx) return;
+    const [blocker] = stage.blockers.splice(srcIdx, 1);
+    tgtStage.blockers.splice(tgtIdx, 0, blocker);
+    renderStages();
+    tgtStage.blockers.forEach((b, i) => {
+      if (b.position !== i) {
+        b.position = i;
+        _patch(b.stage_id || tgtStage.id, b.id, null, { position: i });
+      }
+    });
+  } else if (srcType === 'sub') {
+    const stage = S.stages.find((s) => s.id === srcParts[1]);
+    if (!stage) return;
+    const blocker = stage.blockers.find((b) => b.id === srcParts[2]);
+    const tgtBlocker = stage.blockers.find((b) => b.id === tgtParts[2]);
+    if (!blocker || !tgtBlocker || srcParts[2] !== tgtParts[2]) return;
+    const srcIdx = blocker.items.findIndex((i) => i.id === srcParts[3]);
+    const tgtIdx = tgtBlocker.items.findIndex((i) => i.id === tgtParts[3]);
+    if (srcIdx < 0 || tgtIdx < 0 || srcIdx === tgtIdx) return;
+    const [item] = blocker.items.splice(srcIdx, 1);
+    tgtBlocker.items.splice(tgtIdx, 0, item);
+    renderStages();
+    tgtBlocker.items.forEach((it, i) => {
+      if (it.position !== i) {
+        it.position = i;
+        _patch(srcParts[1], it.blocker_id || tgtBlocker.id, it.id, { position: i });
+      }
+    });
   }
-  apiPatch(url, body).catch((e) => {
-    console.error('patch failed', e);
-    alert(`Update failed: ${e.message}`);
-  });
 }
 
 // ── Blockers / sub-items / ideas ──────────────────────────────────────────
@@ -216,7 +408,7 @@ export function addBQ(sid) {
   const id = _uid();
   const stage = S.stages.find((x) => x.id === sid);
   stage.blockers.push({
-    id, text: v, status: 'todo', deep: false, items: [],
+    id, text: v, status: 'todo', deep: false, items: [], note: '',
   });
   reconcileStageStatus(stage);
   inp.value = '';
@@ -250,7 +442,7 @@ export function addSub(sid, bqid) {
   const id = _uid();
   const stage = S.stages.find((x) => x.id === sid);
   const bq = stage.blockers.find((x) => x.id === bqid);
-  bq.items.push({ id, text: v, status: 'todo', deep: false });
+  bq.items.push({ id, text: v, status: 'todo', deep: false, note: '' });
   reconcileBlockerStatus(bq);
   reconcileStageStatus(stage);
   inp.value = '';
@@ -277,7 +469,7 @@ export function addIdea(sid) {
   const v = inp.value.trim();
   if (!v) return;
   const id = _uid();
-  S.stages.find((x) => x.id === sid).ideas.push({ id, text: v });
+  S.stages.find((x) => x.id === sid).ideas.push({ id, text: v, note: '' });
   inp.value = '';
   renderStages();
   apiPost(`/api/projects/${pid()}/stages/${sid}/ideas`, {
@@ -309,7 +501,7 @@ export function confirmAdd() {
   const v = document.getElementById('newName').value.trim();
   if (!v) return;
   const id = _uid();
-  S.stages.push({ id, name: v, status: 'todo', blockers: [], ideas: [] });
+  S.stages.push({ id, name: v, status: 'todo', blockers: [], ideas: [], note: '' });
   openStages[id] = true;
   document.getElementById('newName').value = '';
   document.getElementById('addCard').style.display = 'none';
@@ -334,26 +526,11 @@ export function deleteStage(id) {
 
 // ── Render helpers ────────────────────────────────────────────────────────
 
-function _uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-}
-
-// Read-only status badge. Used for the stage footer and for blockers that
-// have sub-items (whose status is auto-derived from those items).
 function statusBadge(item) {
   const cl = ST_CLS[item.status] || 'st-todo';
   const lbl = t('status.' + item.status, 'To Do');
   return `<span class="spill ${cl}" style="pointer-events:none" title="Auto-derived">${lbl}</span>`;
 }
-
-// ── Stage status auto-derivation ──────────────────────────────────────────
-// Mirrors backend.models.derive_stage_status. Stage status is a rollup of
-// its blockers + sub-items, with priority:
-//   todo > active > blocked > review > parked > done > nice
-// `todo` wins because if any item hasn't started, the whole stage is
-// still in planning. `solve` is neutral; the fallback is `active`.
-// Called after every blocker/sub-item mutation. Re-render reads stage.status,
-// so the header badge and any downstream UI update automatically.
 
 function deriveStageStatus(stage) {
   const items = [];
@@ -370,18 +547,13 @@ function deriveStageStatus(stage) {
       return candidate;
     }
   }
-  return 'active'; // fallback for all-solve / mixed-neutral
+  return 'active';
 }
 
 function reconcileStageStatus(stage) {
   const derived = deriveStageStatus(stage);
   if (derived !== null) stage.status = derived;
 }
-
-// ── Blocker status auto-derivation (mirrors stage) ────────────────────────
-// Same first-match-wins loop over STAGE_DERIVE_PRIORITY, applied to the
-// blocker's sub-items only. When sub-items exist, the blocker status is
-// read-only; without sub-items, the user can still set it via the dropdown.
 
 function deriveBlockerStatus(blocker) {
   const items = blocker.items || [];
@@ -410,25 +582,27 @@ function pillBtn(item, sid, bqid, subid) {
   return `<button class="spill ${cl}" data-portal="${sid}|${bqidAttr}|${subidAttr}">${lbl} ▾</button>`;
 }
 
-function renderBQ(s) {
+function renderBQ(s, stageIdx) {
   if (!s.blockers.length) return `<div class="hint">${t('bq.none', 'No blockers or questions.')}</div>`;
-  return s.blockers.map((bq) => {
+  return s.blockers.map((bq, bqIdx) => {
     const expanded = !!openBQ[s.id + '_' + bq.id];
+    const bqIndex = `${stageIdx + 1}.${bqIdx + 1}`;
     const deepBadge = bq.deep ? `<span class="deep-badge">${t('bq.too_deep', 'Too deep')}</span>` : '';
     const subRows = bq.items
       .map(
-        (sub) => `
-      <div class="sub-item">
-        <span class="sub-item-text">${esc(sub.text)}</span>
+        (sub, subIdx) => `
+      <div class="sub-item" data-draggable="sub|${s.id}|${bq.id}|${sub.id}" draggable="true">
+        <span class="drag-handle" title="${t('dnd.drag', 'Drag to reorder')}">⠿</span>
+        <span class="item-idx">${bqIndex}.${subIdx + 1}</span>
+        <span class="sub-item-text" data-edit-text="${s.id}|${bq.id}|${sub.id}">${esc(sub.text)}</span>
         ${sub.deep ? `<span class="deep-badge" style="font-size:9px">${t('bq.too_deep', 'Too deep')}</span>` : ''}
+        ${renderNote(s.id, bq.id, sub.id, false)}
+        ${_tsInline(sub)}
         ${pillBtn(sub, s.id, bq.id, sub.id)}
         <button class="btn-del" data-del-sub="${s.id}|${bq.id}|${sub.id}">×</button>
       </div>`,
       )
       .join('');
-    // When the blocker has sub-items, its status is auto-derived — render
-    // a read-only badge. Without sub-items, the user controls it via the
-    // portal dropdown.
     const statusPill = (bq.items && bq.items.length > 0)
       ? statusBadge(bq)
       : pillBtn(bq, s.id, bq.id, '');
@@ -441,12 +615,17 @@ function renderBQ(s) {
         <button data-add-sub="${s.id}|${bq.id}">${t('sub.add', 'Add')}</button>
       </div>`
       : '';
-    return `<div class="bq-item${bq.deep ? ' deep' : ''}">
+    const noteHtml = renderNote(s.id, bq.id, null, false);
+    return `<div class="bq-item${bq.deep ? ' deep' : ''}" data-draggable="blocker|${s.id}|${bq.id}" draggable="true">
       <div class="bq-hdr">
+        <span class="drag-handle" title="${t('dnd.drag', 'Drag to reorder')}">⠿</span>
         <button class="bq-toggle" data-toggle-bq="${s.id}|${bq.id}">${expanded ? '▾' : '▸'}</button>
-        <span class="bq-text">${esc(bq.text)}</span>
+        <span class="bq-idx">${bqIndex}</span>
+        <span class="bq-text" data-edit-text="${s.id}|${bq.id}|">${esc(bq.text)}</span>
         <div class="bq-controls">
+          ${_tsInline(bq)}
           ${deepBadge}
+          ${noteHtml}
           ${statusPill}
           <button class="btn-del" data-del-bq="${s.id}|${bq.id}">×</button>
         </div>
@@ -462,7 +641,9 @@ function renderIdeas(s) {
     .map(
       (i) => `
     <div class="idea-row">
-      <span style="flex:1">${esc(i.text)}</span>
+      <span style="flex:1"><span class="item-idx">✦</span><span class="idea-text" data-edit-text="${s.id}||${i.id}">${esc(i.text)}</span></span>
+      ${_tsInline(i)}
+      ${renderNote(s.id, null, i.id, true)}
       <button class="btn-del" data-del-idea="${s.id}|${i.id}">×</button>
     </div>`,
     )
@@ -475,13 +656,10 @@ export function renderStages() {
   const toolbar = document.querySelector('.toolbar');
   const noProjectMsg = document.getElementById('noProjectMsg');
 
-  // Hide the stage-creation UI entirely when there's no active project —
-  // otherwise clicking "+ Add stage" would POST to /api/projects/null/stages.
   const hasProject = !!activeProjectId;
   if (toolbar) toolbar.style.display = hasProject ? '' : 'none';
   if (noProjectMsg) {
     noProjectMsg.style.display = hasProject ? 'none' : 'block';
-    // Wire the "+ New project" hint to open the sidebar's new-project form.
     const focusEl = noProjectMsg.querySelector('[data-focus-new]');
     if (focusEl) {
       focusEl.style.cursor = 'pointer';
@@ -524,13 +702,14 @@ export function renderStages() {
         review: t('status.is_review', '\u25D0 Review'),
         nice: t('status.is_nice', '\u2726 Nice to have'),
       }[s.status];
+      const noteHtml = renderNote(s.id, null, null, false);
 
       const body = isOpen
         ? `
       <div class="stage-body">
         <div class="subsec">
           <div class="subsec-lbl lbl-block">${t('bq.header', '\u2298 Blockers & questions')}</div>
-          ${renderBQ(s)}
+          ${renderBQ(s, idx)}
           <div class="add-row">
             <input id="bi-${s.id}" placeholder="${t('bq.add_ph', 'Add a blocker or question\u2026')}"
               data-add-bq-enter="${s.id}" />
@@ -555,10 +734,13 @@ export function renderStages() {
       </div>`
         : '';
 
-      return `<div class="stage-card">
+      return `<div class="stage-card" data-draggable="stage|${s.id}" draggable="true">
       <div class="stage-hdr" data-toggle-stage="${s.id}">
+        <span class="drag-handle" title="${t('dnd.drag', 'Drag to reorder')}">⠿</span>
         <span class="stage-num" style="font-size:11px;font-weight:700;color:var(--text-3);min-width:18px">${idx + 1}</span>
-        <span class="stage-name" style="flex:1;font-size:14px;font-weight:500">${esc(s.name)}</span>
+        <span class="stage-name" data-edit-text="${s.id}||" style="flex:1;font-size:14px;font-weight:500">${esc(s.name)}</span>
+        ${_tsInline(s)}
+        ${noteHtml}
         ${bCnt ? `<span class="cnt cnt-b">⊘ ${bCnt}</span>` : ''}
         ${deepCnt ? `<span class="cnt" style="background:var(--amber-bg);color:var(--amber)">⚑ ${deepCnt}</span>` : ''}
         ${iCnt ? `<span class="cnt cnt-i">✦ ${iCnt}</span>` : ''}
@@ -570,7 +752,6 @@ export function renderStages() {
     })
     .join('');
 
-  // Delegate events so re-renders don't lose handlers.
   el.onclick = (ev) => {
     const t = ev.target.closest('[data-portal]');
     if (t) {
@@ -629,12 +810,48 @@ export function renderStages() {
       toggleStage(toggleStageEl.dataset.toggleStage);
       return;
     }
+    const toggleNoteEl = ev.target.closest('[data-toggle-note]');
+    if (toggleNoteEl) {
+      const parts = toggleNoteEl.dataset.toggleNote.split('|');
+      const sid = parts[0], bqid = parts[1], subid = parts[2], typeAttr = parts[3];
+      toggleNote(sid, bqid || null, subid || null, typeAttr === 'idea');
+      return;
+    }
+    const noteSaveEl = ev.target.closest('[data-note-save]');
+    if (noteSaveEl) {
+      const parts = noteSaveEl.dataset.noteSave.split('|');
+      const sid = parts[0], bqid = parts[1], subid = parts[2], typeAttr = parts[3] || 'stage';
+      saveNote(sid, bqid || null, subid || null, typeAttr);
+      return;
+    }
+    const noteCancelEl = ev.target.closest('[data-note-cancel]');
+    if (noteCancelEl) {
+      cancelNote(noteCancelEl.dataset.noteCancel);
+      return;
+    }
+  };
+
+  el.ondblclick = (ev) => {
+    const editTextEl = ev.target.closest('[data-edit-text]');
+    if (editTextEl) {
+      const [sid, bqid, subid] = editTextEl.dataset.editText.split('|');
+      startEdit(editTextEl, sid, bqid || null, subid || null);
+      return;
+    }
   };
 }
 
-// Re-attach Enter-key handlers after each render by attaching to the stage
-// list with delegation. Cheaper than rebuilding listeners on every input.
 document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && _editCtx) {
+    cancelEdit();
+    ev.preventDefault();
+    return;
+  }
+  if (ev.key === 'Enter' && _editCtx && !ev.shiftKey) {
+    saveEdit();
+    ev.preventDefault();
+    return;
+  }
   if (ev.key !== 'Enter' || ev.target.tagName !== 'INPUT') return;
   const t = ev.target;
   if (t.dataset.addBqEnter) { addBQ(t.dataset.addBqEnter); ev.preventDefault(); return; }
@@ -647,9 +864,6 @@ document.addEventListener('keydown', (ev) => {
   if (t.dataset.addIdeaEnter) { addIdea(t.dataset.addIdeaEnter); ev.preventDefault(); return; }
 });
 
-// Wire up the chrome (goal bar, add-stage card) once at module load. These
-// elements live outside the re-rendered stage list, so a single delegated
-// listener on document is sufficient.
 document.addEventListener('click', (ev) => {
   if (ev.target.closest('[data-edit-goal]')) editGoal();
   else if (ev.target.closest('[data-save-goal]')) saveGoal();
@@ -665,6 +879,11 @@ document.addEventListener('keydown', (ev) => {
     else if (ev.key === 'Escape') { cancelAdd(); ev.preventDefault(); }
   }
 });
+
+document.addEventListener('dragstart', handleDragStart);
+document.addEventListener('dragover', handleDragOver);
+document.addEventListener('dragend', handleDragEnd);
+document.addEventListener('drop', handleDrop);
 
 export function renderAll() {
   renderGoal();

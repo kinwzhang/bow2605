@@ -446,12 +446,15 @@ def create_stage(
     name: str,
     status: str = "todo",
     position: Optional[int] = None,
+    note: str = "",
 ) -> dict:
     """Create a stage within `project_id`. Caller must have verified ownership."""
     if not isinstance(stage_id, str) or not stage_id:
         raise ValidationError("validation", "stage id is required")
     name = validate_nonempty("name", name)
     status = validate_status(status, STAGE_STATUSES)
+    if not isinstance(note, str):
+        raise ValidationError("validation", "note must be a string")
 
     if position is None:
         row = conn.execute(
@@ -464,9 +467,9 @@ def create_stage(
 
     try:
         conn.execute(
-            "INSERT INTO stage (id, project_id, name, status, position) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (stage_id, project_id, name, status, position),
+            "INSERT INTO stage (id, project_id, name, status, position, note, status_changed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+            (stage_id, project_id, name, status, position, note),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -476,7 +479,8 @@ def create_stage(
 
 def get_stage(conn: sqlite3.Connection, stage_id: str) -> Optional[dict]:
     row = conn.execute(
-        "SELECT id, project_id, name, status, position, created_at "
+        "SELECT id, project_id, name, status, position, created_at, note, "
+        "status_changed_at, updated_at "
         "FROM stage WHERE id = ?",
         (stage_id,),
     ).fetchone()
@@ -485,7 +489,8 @@ def get_stage(conn: sqlite3.Connection, stage_id: str) -> Optional[dict]:
 
 def list_stages_for_project(conn: sqlite3.Connection, project_id: str) -> list[dict]:
     rows = conn.execute(
-        "SELECT id, project_id, name, status, position, created_at "
+        "SELECT id, project_id, name, status, position, created_at, "
+        "note, status_changed_at, updated_at "
         "FROM stage WHERE project_id = ? ORDER BY position ASC, created_at ASC",
         (project_id,),
     ).fetchall()
@@ -499,6 +504,7 @@ def update_stage(
     name: Optional[str] = None,
     status: Optional[str] = None,
     position: Optional[int] = None,
+    note: Optional[str] = None,
 ) -> Optional[dict]:
     # Status is auto-derived from items once any exist; reject manual writes
     # in that case so the frontend can't poke a status out of sync.
@@ -510,6 +516,10 @@ def update_stage(
                 "stage status is auto-derived from its blockers/sub-items",
             )
 
+    current = get_stage(conn, stage_id)
+    if current is None:
+        return None
+
     sets: list[str] = []
     params: list[object] = []
     if name is not None:
@@ -518,13 +528,18 @@ def update_stage(
     if status is not None:
         sets.append("status = ?")
         params.append(validate_status(status, STAGE_STATUSES))
+        sets.append("status_changed_at = CURRENT_TIMESTAMP")
     if position is not None:
         if not isinstance(position, int) or position < 0:
             raise ValidationError("validation", "position must be a non-negative integer")
         sets.append("position = ?")
         params.append(position)
-    if not sets:
-        return get_stage(conn, stage_id)
+    if note is not None:
+        sets.append("note = ?")
+        params.append(note)
+    if not sets and note is None:
+        return current
+    sets.append("updated_at = CURRENT_TIMESTAMP")
     params.append(stage_id)
     cur = conn.execute(
         f"UPDATE stage SET {', '.join(sets)} WHERE id = ?",
@@ -551,6 +566,7 @@ def create_blocker(
     status: str = "todo",
     deep: bool = False,
     position: Optional[int] = None,
+    note: str = "",
 ) -> dict:
     if not isinstance(blocker_id, str) or not blocker_id:
         raise ValidationError("validation", "blocker id is required")
@@ -558,6 +574,8 @@ def create_blocker(
     status = validate_status(status, ITEM_STATUSES)
     if not isinstance(deep, bool):
         raise ValidationError("validation", "deep must be a boolean")
+    if not isinstance(note, str):
+        raise ValidationError("validation", "note must be a string")
 
     status = _normalize_status_for_deep(status, deep)
     deep_int = 1 if deep else 0
@@ -573,9 +591,9 @@ def create_blocker(
 
     try:
         conn.execute(
-            "INSERT INTO blocker (id, stage_id, text, status, deep, position) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (blocker_id, stage_id, text, status, deep_int, position),
+            "INSERT INTO blocker (id, stage_id, text, status, deep, position, note, status_changed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+            (blocker_id, stage_id, text, status, deep_int, position, note),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -586,7 +604,8 @@ def create_blocker(
 
 def get_blocker(conn: sqlite3.Connection, blocker_id: str) -> Optional[dict]:
     row = conn.execute(
-        "SELECT id, stage_id, text, status, deep, position "
+        "SELECT id, stage_id, text, status, deep, position, note, "
+        "status_changed_at, updated_at "
         "FROM blocker WHERE id = ?",
         (blocker_id,),
     ).fetchone()
@@ -605,6 +624,7 @@ def update_blocker(
     status: Optional[str] = None,
     deep: Optional[bool] = None,
     position: Optional[int] = None,
+    note: Optional[str] = None,
 ) -> Optional[dict]:
     # Status is auto-derived from sub-items once any exist; reject manual
     # writes in that case so the frontend can't poke a status out of sync.
@@ -619,7 +639,7 @@ def update_blocker(
                 "blocker status is auto-derived from its sub-items",
             )
 
-    if text is None and status is None and deep is None and position is None:
+    if text is None and status is None and deep is None and position is None and note is None:
         return get_blocker(conn, blocker_id)
 
     current = get_blocker(conn, blocker_id)
@@ -641,6 +661,7 @@ def update_blocker(
     if status is not None or final_status != current["status"]:
         sets.append("status = ?")
         params.append(final_status)
+        sets.append("status_changed_at = CURRENT_TIMESTAMP")
     if deep is not None or final_deep != current["deep"]:
         sets.append("deep = ?")
         params.append(1 if final_deep else 0)
@@ -649,10 +670,14 @@ def update_blocker(
             raise ValidationError("validation", "position must be a non-negative integer")
         sets.append("position = ?")
         params.append(position)
+    if note is not None:
+        sets.append("note = ?")
+        params.append(note)
 
     if not sets:
         return current
 
+    sets.append("updated_at = CURRENT_TIMESTAMP")
     params.append(blocker_id)
     cur = conn.execute(
         f"UPDATE blocker SET {', '.join(sets)} WHERE id = ?",
@@ -690,6 +715,7 @@ def create_sub_item(
     status: str = "todo",
     deep: bool = False,
     position: Optional[int] = None,
+    note: str = "",
 ) -> dict:
     if not isinstance(sub_id, str) or not sub_id:
         raise ValidationError("validation", "sub-item id is required")
@@ -697,6 +723,8 @@ def create_sub_item(
     status = validate_status(status, ITEM_STATUSES)
     if not isinstance(deep, bool):
         raise ValidationError("validation", "deep must be a boolean")
+    if not isinstance(note, str):
+        raise ValidationError("validation", "note must be a string")
     status = _normalize_status_for_deep(status, deep)
     deep_int = 1 if deep else 0
 
@@ -711,9 +739,9 @@ def create_sub_item(
 
     try:
         conn.execute(
-            "INSERT INTO sub_item (id, blocker_id, text, status, deep, position) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (sub_id, blocker_id, text, status, deep_int, position),
+            "INSERT INTO sub_item (id, blocker_id, text, status, deep, position, note, status_changed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+            (sub_id, blocker_id, text, status, deep_int, position, note),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -731,7 +759,8 @@ def create_sub_item(
 
 def get_sub_item(conn: sqlite3.Connection, sub_id: str) -> Optional[dict]:
     row = conn.execute(
-        "SELECT id, blocker_id, text, status, deep, position "
+        "SELECT id, blocker_id, text, status, deep, position, note, "
+        "status_changed_at, updated_at "
         "FROM sub_item WHERE id = ?",
         (sub_id,),
     ).fetchone()
@@ -750,8 +779,9 @@ def update_sub_item(
     status: Optional[str] = None,
     deep: Optional[bool] = None,
     position: Optional[int] = None,
+    note: Optional[str] = None,
 ) -> Optional[dict]:
-    if text is None and status is None and deep is None and position is None:
+    if text is None and status is None and deep is None and position is None and note is None:
         return get_sub_item(conn, sub_id)
 
     current = get_sub_item(conn, sub_id)
@@ -772,6 +802,7 @@ def update_sub_item(
     if status is not None or final_status != current["status"]:
         sets.append("status = ?")
         params.append(final_status)
+        sets.append("status_changed_at = CURRENT_TIMESTAMP")
     if deep is not None or final_deep != current["deep"]:
         sets.append("deep = ?")
         params.append(1 if final_deep else 0)
@@ -780,10 +811,14 @@ def update_sub_item(
             raise ValidationError("validation", "position must be a non-negative integer")
         sets.append("position = ?")
         params.append(position)
+    if note is not None:
+        sets.append("note = ?")
+        params.append(note)
 
     if not sets:
         return current
 
+    sets.append("updated_at = CURRENT_TIMESTAMP")
     params.append(sub_id)
     cur = conn.execute(
         f"UPDATE sub_item SET {', '.join(sets)} WHERE id = ?",
@@ -828,10 +863,13 @@ def create_idea(
     idea_id: str,
     text: str,
     position: Optional[int] = None,
+    note: str = "",
 ) -> dict:
     if not isinstance(idea_id, str) or not idea_id:
         raise ValidationError("validation", "idea id is required")
     text = validate_nonempty("text", text)
+    if not isinstance(note, str):
+        raise ValidationError("validation", "note must be a string")
 
     if position is None:
         row = conn.execute(
@@ -844,9 +882,9 @@ def create_idea(
 
     try:
         conn.execute(
-            "INSERT INTO idea (id, project_id, stage_id, text, position) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (idea_id, project_id, stage_id, text, position),
+            "INSERT INTO idea (id, project_id, stage_id, text, position, note) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (idea_id, project_id, stage_id, text, position, note),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -856,11 +894,53 @@ def create_idea(
 
 def get_idea(conn: sqlite3.Connection, idea_id: str) -> Optional[dict]:
     row = conn.execute(
-        "SELECT id, project_id, stage_id, text, position "
+        "SELECT id, project_id, stage_id, text, position, note, updated_at "
         "FROM idea WHERE id = ?",
         (idea_id,),
     ).fetchone()
     return dict(row) if row else None
+
+
+def update_idea(
+    conn: sqlite3.Connection,
+    idea_id: str,
+    *,
+    text: Optional[str] = None,
+    position: Optional[int] = None,
+    note: Optional[str] = None,
+) -> Optional[dict]:
+    if text is None and position is None and note is None:
+        return get_idea(conn, idea_id)
+
+    current = get_idea(conn, idea_id)
+    if current is None:
+        return None
+
+    sets: list[str] = []
+    params: list[object] = []
+    if text is not None:
+        sets.append("text = ?")
+        params.append(validate_nonempty("text", text))
+    if position is not None:
+        if not isinstance(position, int) or position < 0:
+            raise ValidationError("validation", "position must be a non-negative integer")
+        sets.append("position = ?")
+        params.append(position)
+    if note is not None:
+        sets.append("note = ?")
+        params.append(note)
+    if not sets:
+        return current
+    sets.append("updated_at = CURRENT_TIMESTAMP")
+    params.append(idea_id)
+    cur = conn.execute(
+        f"UPDATE idea SET {', '.join(sets)} WHERE id = ?",
+        params,
+    )
+    conn.commit()
+    if cur.rowcount == 0:
+        return None
+    return get_idea(conn, idea_id)
 
 
 def delete_idea(conn: sqlite3.Connection, idea_id: str) -> bool:
@@ -915,14 +995,16 @@ def build_snapshot(conn: sqlite3.Connection, project_id: str) -> Optional[dict]:
     stage_blocks: list[dict] = []
     for st in stages:
         blockers = conn.execute(
-            "SELECT id, text, status, deep, position FROM blocker "
+            "SELECT id, text, status, deep, position, note, "
+            "status_changed_at, updated_at FROM blocker "
             "WHERE stage_id = ? ORDER BY position ASC",
             (st["id"],),
         ).fetchall()
         blocker_list = []
         for bq in blockers:
             items = conn.execute(
-                "SELECT id, text, status, deep, position FROM sub_item "
+                "SELECT id, text, status, deep, position, note, "
+                "status_changed_at, updated_at FROM sub_item "
                 "WHERE blocker_id = ? ORDER BY position ASC",
                 (bq["id"],),
             ).fetchall()
@@ -932,6 +1014,9 @@ def build_snapshot(conn: sqlite3.Connection, project_id: str) -> Optional[dict]:
                 "status": bq["status"],
                 "deep": bool(bq["deep"]),
                 "position": bq["position"],
+                "note": bq["note"],
+                "status_changed_at": bq["status_changed_at"],
+                "updated_at": bq["updated_at"],
                 "items": [
                     {
                         "id": it["id"],
@@ -939,12 +1024,15 @@ def build_snapshot(conn: sqlite3.Connection, project_id: str) -> Optional[dict]:
                         "status": it["status"],
                         "deep": bool(it["deep"]),
                         "position": it["position"],
+                        "note": it["note"],
+                        "status_changed_at": it["status_changed_at"],
+                        "updated_at": it["updated_at"],
                     }
                     for it in items
                 ],
             })
         ideas = conn.execute(
-            "SELECT id, text, position FROM idea "
+            "SELECT id, text, position, note, updated_at FROM idea "
             "WHERE stage_id = ? ORDER BY position ASC",
             (st["id"],),
         ).fetchall()
@@ -953,6 +1041,9 @@ def build_snapshot(conn: sqlite3.Connection, project_id: str) -> Optional[dict]:
             "name": st["name"],
             "status": st["status"],
             "position": st["position"],
+            "note": st["note"],
+            "status_changed_at": st["status_changed_at"],
+            "updated_at": st["updated_at"],
             "blockers": blocker_list,
             "ideas": [dict(i) for i in ideas],
         })
@@ -1006,6 +1097,7 @@ __all__ = [
     "delete_sub_item",
     "create_idea",
     "get_idea",
+    "update_idea",
     "delete_idea",
     "get_goal",
     "set_goal",
